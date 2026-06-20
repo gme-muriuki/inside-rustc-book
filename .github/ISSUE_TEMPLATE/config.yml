@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or open discussion
+    url: https://github.com/gme-muriuki/inside-rustc-book/discussions
+    about: For open-ended questions, ideas, or anything that doesn't fit one of the issue templates, use Discussions.

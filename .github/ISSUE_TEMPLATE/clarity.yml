@@ -1,0 +1,23 @@
+name: Clarity suggestion
+description: A passage that confused you, even if you don't have a fix.
+title: "[clarity] "
+labels: ["clarity"]
+body:
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the book
+      description: "Chapter, section, sentence or paragraph quote."
+    validations:
+      required: true
+  - type: textarea
+    id: confused
+    attributes:
+      label: What confused you
+      description: "Try to articulate what you expected vs what you read. Even rough is useful."
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested rewording (optional)

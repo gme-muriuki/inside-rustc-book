@@ -1,0 +1,24 @@
+name: Site or build bug
+description: Something broke in the rendered book (missing image, quiz won't load, diagram is cut off, tooltip won't fire, etc.).
+title: "[site] "
+labels: ["site-bug"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page URL
+      description: "Full URL of the affected page."
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What broke
+      description: "What did you expect vs what happened? A screenshot helps."
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      description: "e.g. Firefox 130 on Ubuntu 22.04, Safari 17 on macOS 14, Chrome on Android 14."

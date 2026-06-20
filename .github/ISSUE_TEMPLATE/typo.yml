@@ -1,0 +1,17 @@
+name: Typo or broken link
+description: A small surface fix that's easier to report than to draft.
+title: "[typo] "
+labels: ["typo"]
+body:
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: "Chapter, section, sentence quote, or the URL of the rendered page."
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix (optional)
+      description: "Even a 'this is wrong' is useful signal."

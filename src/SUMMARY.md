@@ -53,3 +53,4 @@
 
 - [Appendices A–D](appendices.md)
 - [Glossary](glossary.md)
+- [Contributing](contributing.md)

@@ -1,0 +1,35 @@
+name: Drift report
+description: A function, module, type, or behavior the book describes no longer matches current rustc.
+title: "[drift] "
+labels: ["drift"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The book is pinned to `rustc 1.95.0`. If you found something that changed at HEAD (or any later release), this is the right template.
+  - type: textarea
+    id: where
+    attributes:
+      label: Where in the book
+      description: "Chapter, section, paragraph hint. e.g. CH3 §3.3 step 2; or paste the URL of the rendered page."
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What the book currently says
+      description: Quote the passage or describe the claim.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What rustc actually does now
+      description: "Cite the source if you can, in the form path/to/file.rs::SymbolName@<short-SHA>."
+    validations:
+      required: true
+  - type: input
+    id: pin
+    attributes:
+      label: rustc commit or tag you checked against
+      description: "e.g. 1.97.0, master, or a short SHA."
