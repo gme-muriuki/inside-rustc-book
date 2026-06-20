@@ -25,6 +25,22 @@ mdbook serve --open
 
 The first build will print two harmless warnings about `mdbook-admonish` (v1.20.0) and `mdbook-pagetoc` (v0.3.0) being built against a slightly different `mdbook` minor version. The shim at `scripts/admonish-wrap.py` absorbs the actual structural difference; the warnings are cosmetic.
 
+## Deploy (Cloudflare Pages)
+
+The book deploys to Cloudflare Pages via a build script that downloads pre-built plugin binaries instead of compiling them (`cargo install` of the four plugins takes ~17 min and would risk Cloudflare's 20-min free-tier build cap; the script is under a minute).
+
+In the Cloudflare Pages dashboard, after connecting this repo:
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | None |
+| Build command | `bash scripts/cf-pages-build.sh` |
+| Build output directory | `book` |
+| Root directory | `/` (default) |
+| Environment variables | (none required) |
+
+To bump a plugin version, edit the `*_VERSION` pins at the top of [scripts/cf-pages-build.sh](scripts/cf-pages-build.sh) and push.
+
 ## What's in the box
 
 - `src/` — chapter content (26 chapters across 6 parts, plus preface, cover, glossary, appendices).

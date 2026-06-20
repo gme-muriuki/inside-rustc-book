@@ -1,6 +1,9 @@
 # mdBook build output
 book/
 
+# Pre-built plugin binaries downloaded by scripts/cf-pages-build.sh
+.cf-bin/
+
 # mdbook-pagetoc auto-generates these on first build; tracked separately
 # so a plugin upgrade does not surface a noisy diff. Uncomment if you'd
 # rather treat them as generated artifacts.
