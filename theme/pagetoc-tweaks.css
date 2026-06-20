@@ -23,13 +23,26 @@
         line-height, softer H3/H4 indents).
 */
 
-/* Main visible state at 1280px and up: fixed, right-anchored. */
+/* Hide mdBook's floating wide-screen prev/next chevrons. They sit in the
+   same right-edge gutter where the pagetoc now lives, and competing for
+   that real-estate looked cluttered. Each chapter still has prev/next
+   links in the footer at the bottom of the page, so navigation is not
+   lost; we just remove the duplicate floating affordance. The mobile
+   variants stay (narrow viewports do not get the floating-arrow layout
+   anyway, and the mobile-* chevrons are how readers paginate on phones). */
+.nav-wide-wrapper {
+    display: none !important;
+}
+
+/* Main visible state at 1280px and up: fixed, right-anchored. Pulled
+   inward a touch (1.75em from right edge) so the panel does not feel
+   crammed against the viewport corner. */
 @media only screen and (min-width: 1280px) {
     .sidetoc {
         display: block !important;
         position: fixed !important;
         top: calc(var(--menu-bar-height, 50px) + 1em);
-        right: 1em;
+        right: 1.75em;
         left: auto !important;
         margin: 0 !important;
     }
