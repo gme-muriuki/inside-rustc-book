@@ -1,15 +1,40 @@
 /* Custom pagetoc tweaks. Lives outside pagetoc.css so a future
-   `mdbook-pagetoc` reinstall does not overwrite it. */
+   `mdbook-pagetoc` reinstall does not overwrite it.
 
-/* Breathing room. The default pagetoc is 200px wide with 5px vertical link
-   padding and 60px H4 indent, which makes nested headings feel cramped
-   against the right edge. Modest bumps: +20% width, looser line padding,
-   line-height for readability, and softer H3/H4 indents that reclaim text
-   column width for the long heading labels this book has ("Pro-Tip, the
-   navigation move that unlocks the codebase" etc.). */
-@media only screen and (min-width: 1440px) {
+   The default mdbook-pagetoc only shows the right-rail TOC at viewport
+   >= 1440px (because its positioning math assumes that minimum). At
+   narrower widths the pagetoc would render off-screen, so the plugin
+   hides it. That cuts off every laptop user on a 1366 or 1280 panel.
+
+   This file:
+     1. Replaces the math-based absolute positioning with a simple
+        right-anchored fixed layout so the pagetoc always sits cleanly
+        at the viewport right edge.
+     2. Lowers the display floor to 1280px (still hides below that,
+        where there genuinely is not room).
+     3. Hides the pagetoc when the main sidebar is open AND viewport is
+        below 1600px, to avoid three-column cramping. Reader collapses
+        the sidebar (or widens the window) to bring the pagetoc back.
+     4. Adds breathing-room sizing (240px wide, 7px line padding, looser
+        line-height, softer H3/H4 indents).
+*/
+
+/* Main visible state at 1280px and up: fixed, right-anchored. */
+@media only screen and (min-width: 1280px) {
+    .sidetoc {
+        display: block !important;
+        position: fixed !important;
+        top: calc(var(--menu-bar-height, 50px) + 1em);
+        right: 1em;
+        left: auto !important;
+        margin: 0 !important;
+    }
     .pagetoc {
+        position: relative !important;
+        left: auto !important;
         width: 240px;
+        max-height: calc(100vh - var(--menu-bar-height, 50px) - 2em);
+        overflow-y: auto;
         padding: 8px 4px;
     }
     .pagetoc a {
@@ -25,19 +50,23 @@
     }
 }
 
-/* Sidebar / pagetoc cohabitation.
-   The mdbook-pagetoc default already hides the pagetoc below 1440px wide.
-   In the 1440-1599px band the pagetoc IS shown by default, but if the main
-   left sidebar is also open the content column gets squeezed (250px sidebar
-   + 200px pagetoc + margins leaves under 900px for prose, which feels
-   cramped on a standard laptop).
-   This rule says: in the 1440-1599 band, hide the pagetoc when the sidebar
-   is open. Reader either collapses the left sidebar (sidebar toggle in the
-   menu bar) or widens the window to bring the pagetoc back. Above 1599px
-   both panels coexist comfortably. */
-@media only screen and (min-width: 1440px) and (max-width: 1599px) {
-    html.sidebar-visible .pagetoc,
-    html.sidebar-visible .sidetoc {
+/* Below 1280, hide entirely. There is not enough horizontal room for a
+   useful right-rail TOC alongside the body text. */
+@media only screen and (max-width: 1279px) {
+    .sidetoc,
+    .pagetoc {
+        display: none !important;
+    }
+}
+
+/* Cohabitation: when the main left sidebar is open AND viewport is
+   below 1600px, hide the pagetoc to avoid cramping the content column.
+   Reader can collapse the left sidebar (menu-bar toggle) or widen the
+   window to bring the pagetoc back. Above 1600px both panels coexist
+   comfortably. */
+@media only screen and (max-width: 1599px) {
+    html.sidebar-visible .sidetoc,
+    html.sidebar-visible .pagetoc {
         display: none !important;
     }
 }
