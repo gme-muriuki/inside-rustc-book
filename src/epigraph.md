@@ -1,3 +1,3 @@
-*There must be something which moves without being moved, and is the cause of motion in all else.*
+*What I cannot create, I do not understand.*
 
-after Aristotle, *Metaphysics* XII
+Richard P. Feynman, last blackboard
