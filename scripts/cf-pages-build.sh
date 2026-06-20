@@ -62,7 +62,8 @@ echo "Installed binaries:"
 "$BIN_DIR/mdbook" --version
 "$BIN_DIR/mdbook-admonish" --version
 "$BIN_DIR/mdbook-quiz" --version
-"$BIN_DIR/mdbook-pagetoc" --version
+# mdbook-pagetoc has no --version flag; just confirm the file is present
+ls -lh "$BIN_DIR/mdbook-pagetoc"
 
 echo "Running mdbook build"
 mdbook build
