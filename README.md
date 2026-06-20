@@ -8,7 +8,9 @@ This is an mdBook. Every chapter follows the same four-section rhythm: theoretic
 
 ## Read it
 
-(Public URL goes here once GitHub Pages is set up.)
+**[inside-rustc-book.james-muriuki-dev.workers.dev](https://inside-rustc-book.james-muriuki-dev.workers.dev)**
+
+Deployed via Cloudflare Workers (Static Assets) from the `main` branch. Every push to `main` triggers a re-deploy.
 
 ## Build it locally
 
