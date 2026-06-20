@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does rustc optimize MIR before handing it to LLVM, given that LLVM is itself an optimizer?"
+prompt.distractors = [
+    "Because LLVM cannot perform constant folding, so rustc must do it first.",
+    "Because the borrow checker runs on the optimized MIR rather than the build-time MIR.",
+    "Because LLVM IR is not Turing-complete and so cannot express some Rust constructs.",
+]
+answer.answer = "For better final code (some optimizations need Rust-level knowledge LLVM has lost) and, substantially, for faster compilation by giving LLVM less to chew on."
+context = """
+The dev-guide gives the two verified reasons in §16.1: better final code where Rust-level information survives only at the MIR level, and faster compile times because every redundancy MIR removes is work LLVM does not repeat. MIR optimization is partly about the output and substantially about compile times, a perennial Rust concern.
+"""
+id = "aa62c2bc-50bd-4be4-8821-e0439d4b6d1e"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What `-Z mir-opt-level` threshold does `DataflowConstProp::is_enabled` require before the pass runs?"
+answer.answer = "3"
+answer.alternatives = [">= 3", "mir_opt_level >= 3", "level 3", "3 or higher"]
+context = """
+In `compiler/rustc_mir_transform/src/dataflow_const_prop.rs`, `is_enabled` returns `sess.mir_opt_level() >= 3`, so the pass is off below `-Copt-level=3`. There is also a `BLOCK_LIMIT` of 100 that bails out on huge bodies unless `mir_opt_level >= 4`.
+"""
+id = "f80f78b6-8f8d-4b83-a5ff-356d10c8018b"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In the `FlatSet` lattice used by `ConstAnalysis`, what is the join of `Elem(5)` and `Elem(7)` at a control-flow merge?"
+prompt.distractors = [
+    "`Elem(5)`, since the first incoming edge wins.",
+    "`Elem(6)`, the arithmetic mean of the two constants.",
+    "`Bottom`, because the values disagree so no information is propagated.",
+]
+answer.answer = "`Top`, because no single constant value is true on every incoming path."
+context = """
+`FlatSet` is the textbook constant-propagation lattice with three states: `Bottom`, `Elem(v)`, and `Top`. The flat ordering `Bottom < Elem(v) < Top` means the join of two different constants is `Top`. That join is the soundness heart: if the analysis kept `Elem(5)` instead, the rewrite would fold a value that holds on only one branch, a miscompile.
+"""
+id = "38a2e432-507d-4212-a327-71eb3972b077"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which trait must the `Domain` associated type of an `Analysis` impl satisfy so that `iterate_to_fixpoint` is guaranteed to terminate?"
+answer.answer = "JoinSemiLattice"
+answer.alternatives = ["join semilattice", "JoinSemiLattice (plus Clone)", "Clone + JoinSemiLattice"]
+context = """
+The `Analysis` trait in `rustc_mir_dataflow/src/framework/mod.rs` declares `type Domain: Clone + JoinSemiLattice`. The `JoinSemiLattice` bound guarantees termination (a monotone function over a finite-height lattice reaches a fixpoint) and, crucially, soundness at merges (the join combines facts from all incoming edges conservatively).
+"""
+id = "c0be1a31-47a5-48e5-89c8-18bb0b1c575b"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What does the `Machine` trait give the `rustc_const_eval` interpreter that lets one `InterpCx` serve CTFE, the `DataflowConstProp` pass, and Miri?"
+prompt.distractors = [
+    "It supplies the MIR being interpreted, since each caller has different MIR.",
+    "It performs the fixpoint iteration; the interpreter only handles individual statements.",
+    "It rewrites the MIR in place, so each caller transforms differently.",
+]
+answer.answer = "It plugs in host-specific policies (FFI behaviour, memory semantics, what counts as UB, determinism), so the same interpreter runs under a strict CTFE machine, a `DummyMachine` for ConstProp, and a permissive UB-checking machine for Miri."
+context = """
+`InterpCx` is generic over a `Machine`. CTFE plugs in a strict, step-limited, deterministic machine; the `DataflowConstProp` pass uses `DummyMachine` to fold known sub-expressions; Miri plugs in a permissive machine that simulates real memory and rigorously checks for UB. The interpreter is shared; only the machine policy differs.
+"""
+id = "e1bc4c1d-77d0-45b6-a9f5-17c551e8fbc2"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "`DataflowConstProp`'s rewrite is a separate phase that runs after the dataflow reaches a fixpoint. Why not fold constants as the analysis discovers them?"
+prompt.distractors = [
+    "Because `MutVisitor` cannot be combined with a `ResultsVisitor` in the same pass.",
+    "Because `iterate_to_fixpoint` is single-threaded and the rewrite is parallel.",
+    "Because the MIR is moved into the analysis and only returned at fixpoint.",
+]
+answer.answer = "Because rewriting mid-analysis would change the MIR underneath the fixpoint iteration, and the analysis would observe a state that is true on only some paths, leading to unsound transformations."
+context = """
+The analyze-then-transform split is the standard, safe structure for every dataflow-based optimization. Computing all the facts first (soundly joined at every merge) and only then mutating ensures the rewrite acts on information valid at every reachable execution. In real rustc this is realised by `Collector` (a `ResultsVisitor` over `ConstAnalysis`) feeding a `Patch` whose `impl MutVisitor` runs `visit_body_preserves_cfg(body)`.
+"""
+id = "e6225ed2-3ecc-40ef-9d92-73060e152b9e"

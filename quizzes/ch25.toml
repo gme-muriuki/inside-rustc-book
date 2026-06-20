@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is building `rustc` orchestrated by `./x` rather than a single `cargo build`?"
+prompt.distractors = [
+    "Cargo cannot compile crates that contain procedural macros.",
+    "`rustc`'s build system needs to download a copy of the standard library that Cargo cannot fetch.",
+    "Cargo refuses to build workspaces larger than 100 crates.",
+]
+answer.answer = "Because `rustc` is itself written in Rust, building it is **bootstrapping**: a prebuilt stage-0 beta compiler downloaded from CI compiles the in-tree source into stage 1, which then compiles itself into stage 2. `./x` (driven by `src/bootstrap`) orchestrates that multi-step dance."
+context = """
+The chicken-and-egg is intrinsic: you need a Rust compiler to compile the Rust compiler. The resolution is to seed the process with a downloaded beta (stage 0). The build system itself is also in Rust, so a small `bootstrap.py` first builds `src/bootstrap` before `./x` takes over.
+"""
+id = "ac7cc07b-0532-49ae-a083-80d6859dd234"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What does **stage 1** contain in the rustc bootstrap, and when is it enough?"
+prompt.distractors = [
+    "Stage 1 is the downloaded beta compiler; it never contains your changes.",
+    "Stage 1 is the self-hosting compiler you must use for every change before opening a PR.",
+    "Stage 1 is a no-LLVM check-only artifact suitable only for type checking.",
+]
+answer.answer = "Stage 1 is the compiler built by stage 0 from your in-tree source, so it contains your changes; for most compiler work (a borrow-check tweak, a lint, a diagnostic edit) stage 1 is enough to test the edit."
+context = """
+Stage 0 is the downloaded beta (the seed). Stage 1 = stage-0 built your source, so your edits are in it. Stage 2 = stage-1 built your source again (self-hosting), needed when you must test the compiler the way it will actually ship. The dev-guide's building section frames stage 1 as enough for most compiler edits.
+"""
+id = "165e3257-36c2-4a85-9845-ae3940bb15d3"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which single `bootstrap.toml` setting removes the multi-hour LLVM C++ build by fetching a prebuilt LLVM from CI?"
+answer.answer = "download-ci-llvm"
+answer.alternatives = ["download-ci-llvm = true", "[llvm] download-ci-llvm", "llvm.download-ci-llvm"]
+context = """
+Setting `download-ci-llvm = true` (under `[llvm]` in `bootstrap.toml`) downloads a prebuilt LLVM instead of compiling it from source. It is the single biggest accelerator for anyone not touching the LLVM backend, and turns the from-scratch build from hours to minutes.
+"""
+id = "5f8e0551-b5e1-4882-957c-ff4a16ff35cf"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A UI test like `tests/ui/borrowck/borrow-imm-as-mut.rs` pins the compiler's behavior in two complementary ways. Which pair correctly names them?"
+prompt.distractors = [
+    "A `//@ run-pass` directive and a `Cargo.toml` manifest.",
+    "A `Makefile` and a `rmake.rs` driver.",
+    "A `.fixed` snapshot and a FileCheck `// CHECK:` pattern.",
+]
+answer.answer = "Inline `//~ ERROR` annotations (which pin a diagnostic of a given kind to a specific source line) and a `.stderr` snapshot (which records the entire normalized `HumanEmitter` output the compiler should produce)."
+context = """
+The two checks fail independently. `//~ ERROR` (plus the `//~^` point-up and `//~|` continuation forms) pins the *semantics* of a diagnostic. The `.stderr` file pins the *presentation*. `compiletest` runs both checks; `--bless` rewrites the snapshot but not the inline annotations, so annotation mismatches must be fixed by hand.
+"""
+id = "418c48a2-8f81-4bd2-9c88-4c85b382c8ef"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What flag do you pass to `./x test` to regenerate `.stderr` snapshots when you have intentionally changed compiler output?"
+answer.answer = "--bless"
+answer.alternatives = ["bless", "-bless", "./x test --bless"]
+context = """
+`./x test tests/ui --bless` re-runs the suite and rewrites every stale `.stderr` (and `.stdout`/`.fixed`) snapshot to match the new output. The discipline afterwards is to `git diff` the result and verify each change is the improvement you intended, never bless blindly.
+"""
+id = "5190434b-e8ab-463a-a62c-bc4030f0503d"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "How does the **bors** merge bot keep `rust-lang/rust`'s `main` branch from breaking?"
+prompt.distractors = [
+    "bors merges every `@bors r+` PR directly into `main`, then reverts it if CI later fails.",
+    "bors runs only a fast subset of tests on each PR and trusts reviewers to catch the rest.",
+    "bors rebases PRs on top of `main` and force-pushes them without re-running tests.",
+]
+answer.answer = "bors places approved PRs in a queue, merges each (often as a *rollup* of several small PRs) with the current `main`, runs the *full* test suite against that merge, and only integrates the result if everything passes; on failure the PR is bounced and `main` is untouched."
+context = """
+This is why `main` is always green in practice: nothing merges without passing CI against the exact state it will land in. Approval (`@bors r+`) puts a PR in the queue; bors does the actual merge-and-test. Small approved PRs are batched into rollups to amortize the cost of the full suite.
+"""
+id = "a8e5da3c-aa48-4094-9ff0-ac67c1974d92"

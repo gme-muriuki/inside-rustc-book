@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What level of input does the `rustc` macro system operate on, and why?"
+prompt.distractors = [
+    "Raw text (characters), like the C preprocessor, so DSLs can embed arbitrary syntax.",
+    "Fully type-checked AST nodes, so macros can know the types of their arguments.",
+    "MIR basic blocks, so macros can manipulate control flow directly.",
+]
+answer.answer = "Token trees: structured enough to forbid re-association (so `2 + 3` cannot be re-parsed as four loose characters) but loose enough to admit syntax that is not yet legal Rust."
+context = """
+A Rust macro sees a `TokenStream`, the structured-but-untyped sequence of tokens and pre-matched delimiter groups from Chapter 7. Operating on tokens rather than text means `square!(2 + 3)` receives `2 + 3` as a grouped expression fragment, so it cannot be re-associated. The C preprocessor's textual substitution is what lets `SQUARE(2 + 3)` expand to `2 + 3 * 2 + 3`; Rust's token-tree model rules that out by construction.
+"""
+id = "9567f770-c7e6-4aae-a262-785d2e8fef55"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the name of the single method in `rustc_expand` that runs the entire macro-expansion fixpoint loop on a crate?"
+answer.answer = "fully_expand_fragment"
+answer.alternatives = ["MacroExpander::fully_expand_fragment", "fully expand fragment"]
+context = """
+`MacroExpander::fully_expand_fragment` (in `compiler/rustc_expand/src/expand.rs`) drives the four verbs of the loop: collect `Invocation`s, resolve each macro path, run its expander, and integrate the produced `AstFragment` (assigning `NodeId`s and `DefId`s, inserting names into modules). It does not return until the AST contains no unexpanded macro invocations or a compile error has been recorded.
+"""
+id = "51481ba7-3311-4bc7-86cb-b5b23fdf3974"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does `rustc_expand` define a `ResolverExpand` trait rather than calling `rustc_resolve` directly?"
+prompt.distractors = [
+    "To let third-party plugins swap in alternative name resolvers at compile time.",
+    "To make hygiene optional, so unhygienic macros can skip name resolution entirely.",
+    "Because name resolution is unstable and may change between releases, so the trait pins the API.",
+]
+answer.answer = "Because `rustc_resolve` depends on the AST crate, so `rustc_expand` cannot depend on `rustc_resolve` without a cycle; the trait inverts the dependency. The real `Resolver` in `rustc_resolve` implements `ResolverExpand`, and the expander holds a `&mut dyn ResolverExpand`."
+context = """
+This is the same decoupling instinct as the `Providers` struct in §3.2: a lower-level crate needs a service from a higher-level one, so the service is abstracted behind a trait the higher-level crate fills in. The interlacing of expansion and resolution is not hand-waving; it is a `dyn ResolverExpand` call sitting inside `fully_expand_fragment`'s resolve step, with the trait at `compiler/rustc_expand/src/base.rs`.
+"""
+id = "632c42ff-fef1-43c6-839a-26c07cc60bd2"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "An identifier's `SyntaxContext` (the hygiene color stored in every `Span`) is best described as which of these?"
+prompt.distractors = [
+    "A single `ExpnId` naming the one macro expansion that introduced the identifier.",
+    "A boolean flag saying whether the identifier came from a macro or from user source.",
+    "A pointer to the macro's `SyntaxExtension` definition, so the resolver can replay the expansion.",
+]
+answer.answer = "An interned index into a chain of (parent SyntaxContext, ExpnId, Transparency) entries: the sequence of expansions the identifier has passed through, extended by `apply_mark` each time it crosses into a new expansion."
+context = """
+`SyntaxContext` is a `u32`-indexed interned key. The chain element is an `(ExpnId, Transparency)` pair (not bare `ExpnId`), and the interner key is `(SyntaxContext, ExpnId, Transparency)` in `compiler/rustc_span/src/hygiene.rs`. Because contexts are chains that recur, interning makes them cheap to copy onto every `Span`. Name resolution in Chapter 9 then compares `(Symbol, SyntaxContext)` pairs, which is why two `a`s with different colors are different names.
+"""
+id = "25711b40-7319-4be3-b37a-92c0d12d1a53"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "When the `macro_rules!` NFA matcher hits a typed metavariable like `$x:expr`, which existing rustc function does it call to capture the fragment?"
+answer.answer = "parse_nonterminal"
+answer.alternatives = ["Parser::parse_nonterminal", "parse nonterminal"]
+context = """
+The matcher in `parse_tt` is an NFA over `MatcherLoc`s that handles literal tokens itself, but it cannot parse an `expr`/`ty`/`block`/etc. So it delegates every typed capture to `Parser::parse_nonterminal` from §7.2 and commits fully to the result. This is why the `expr` follow-set is restricted to a small set of tokens (`=>`, `,`, `;`): the NFA must know unambiguously where the committed expression parse ends.
+"""
+id = "9f951888-4379-4a16-a019-ca7821dc68e9"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A `macro_rules!` matcher binds `$x` inside `$( $x:expr ),*` against `my_vec![1, 2, 3]`. What is the resulting `NamedMatch` structure?"
+prompt.distractors = [
+    "A single `MatchedSingle` holding a `TokenStream` of `1, 2, 3`.",
+    "A `Vec<TokenStream>` of length 3 (no enum wrapper); the matcher only uses raw token streams.",
+    "A `MatchedSeq` of three nested `MatchedSeq`s, each holding one captured token (the depth always mirrors the maximum nesting in the whole macro).",
+]
+answer.answer = "A `MatchedSeq` containing three `MatchedSingle` entries, each carrying a `ParseNtResult::Expr` for one captured expression. The shape of the binding mirrors the nesting of repetitions in the matcher."
+context = """
+`NamedMatch` has two variants: `MatchedSeq(Vec<NamedMatch>)` and `MatchedSingle(ParseNtResult)` (`compiler/rustc_expand/src/mbe/macro_parser.rs`). Each `MatchedSeq` corresponds to one repetition level, and `MatchedSingle` carries a typed parsed fragment, not a raw token. The transcriber later uses the *length* of the `MatchedSeq` to drive how many times a `$(...)*` template body is unrolled.
+"""
+id = "27dac13c-4e25-445b-a6bd-5b1c187a37a3"

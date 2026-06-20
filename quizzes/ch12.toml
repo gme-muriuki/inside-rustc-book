@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 12 frames trait solving as logic programming. In that mapping, what is an `impl` block?"
+prompt.distractors = [
+    "A query (a goal to prove).",
+    "A set of assumptions added to the `ParamEnv`.",
+    "An interner for trait references.",
+]
+answer.answer = "A rule (a Horn clause): the impl's head is the conclusion and its `where` clauses are the premises."
+context = """
+Section 12.1 maps the pieces directly. `impl<T: Clone> Clone for Vec<T>` reads as the Horn clause "`Vec<T>: Clone` is provable *if* `T: Clone` is provable." A bound to prove is the query; proving means matching a rule's head and recursively proving its premises, exactly Prolog's resolution loop run inside the compiler.
+"""
+id = "7daf37b1-572f-4d07-9659-c0373c7a9b2e"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the next-gen solver's name for the unit of work it proves: a predicate together with the `ParamEnv` of assumptions it may use?"
+answer.answer = "Goal"
+answer.alternatives = ["goal", "Goal", "a Goal", "a goal"]
+context = """
+A `Goal` bundles the `Predicate` (the statement to prove, usually a trait or projection `Clause`) with a `ParamEnv` of assumed bounds. The legacy solver called the same idea an `Obligation` (a `Predicate` plus an `ObligationCause` and recursion depth). The `EvalCtxt` canonicalizes the `Goal` to produce a cache key.
+"""
+id = "1eeaef91-044b-47dd-a6be-70812289869e"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does the next-gen solver **canonicalize** a goal before evaluating it?"
+prompt.distractors = [
+    "To strip away the `ParamEnv` so the goal can be compared by pointer equality.",
+    "To rewrite associated-type projections into their normalized form before assembly.",
+    "To check that the goal's predicate is well-formed before the search starts.",
+]
+answer.answer = "To rewrite inference variables into a context-independent normal form so structurally identical goals share a key in the query cache."
+context = """
+A goal in flight contains inference variables (`?T: Clone`), and `?T` is a local name meaningful only to the current `InferCtxt`. Canonicalization renumbers those variables into canonical positions (`^0`, `^1`, ...) so two equivalent goals canonicalize to the same key. The canonical evaluation entry point is a `tcx` query, which is why proving `Vec<u32>: Clone` once and caching it makes the thousandth occurrence a hash lookup.
+"""
+id = "4666e03e-4130-4a9d-8f33-ad82172d64a8"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Inside `consider_impl_candidate`, what does the call `ecx.eq(goal.predicate.trait_ref, impl_trait_ref)` actually do?"
+prompt.distractors = [
+    "It checks every `where` clause on the impl and rejects the candidate if any premise fails.",
+    "It normalizes the impl's associated types so the goal can be compared by structural equality.",
+    "It records the impl's `DefId` in the search graph so cycles are detected on a re-entry.",
+]
+answer.answer = "It unifies only the impl's head (Self type + trait args) against the goal, binding the impl's fresh generic vars; the `where`-clause premises are deliberately *not* checked at this step."
+context = """
+Section 12.3 names this the load-bearing two-phase structure. Step 2 matches the head (`eq`); step 3 spawns the impl's `where` clauses as nested goals via `add_goals(GoalSource::ImplWhereBound, ...)`; step 4 recurses. Matching the head ignores premises on purpose so the solver can assemble a candidate set first and *then* winnow, and so head-matching can supply the inference progress premise-checking might need.
+"""
+id = "e9ee58c1-1bc7-4052-8970-e05f37b97619"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `Certainty` variant does the `EvalCtxt` return for a goal it cannot yet decide because an inference variable in the goal is still unconstrained?"
+answer.answer = "Maybe"
+answer.alternatives = ["maybe", "Certainty::Maybe", "Ambiguous", "ambiguous"]
+context = """
+`Maybe` (with a `MaybeCause::Ambiguity` or `MaybeCause::Overflow`) means "ask again later," not "refuted." The fulfillment loop retains the obligation and re-evaluates it once inference makes progress, which is the concrete realization of the §12.1 claim that inference and trait solving are one fixed-point computation rather than two sequential phases.
+"""
+id = "b578a167-621d-4283-b150-5c61aa67e8dc"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Rust's **coherence** rules combine two sub-rules to guarantee that for any type and trait at most one `impl` applies. Which pair is correct?"
+prompt.distractors = [
+    "The orphan rule and the recursion limit.",
+    "The overlap check and the auto-trait rule.",
+    "The orphan rule and lazy normalization.",
+]
+answer.answer = "The overlap check (no two `impl`s may apply to the same type) and the orphan rule (you may only `impl` a trait for a type if your crate owns the trait or the type)."
+context = """
+Coherence is what makes the proof search's answer unique and therefore meaningful: it is why method resolution is unambiguous across the crate graph and why one can speak of *the* impl rather than *an* impl. The next-gen solver is already in production specifically for coherence; routing the rest of trait solving through it is still nightly-only (`-Znext-solver=globally` in rustc 1.95).
+"""
+id = "865d0151-b46f-4cda-899e-5df39b6297ce"

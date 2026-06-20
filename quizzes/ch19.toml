@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What does `rustc`'s default LLVM backend actually do, and what does LLVM do?"
+prompt.distractors = [
+    "`rustc` performs all instruction selection and register allocation; LLVM only handles linking.",
+    "`rustc` runs the bulk of optimization on MIR; LLVM only emits a tiny object file.",
+    "LLVM parses the source and `rustc` emits the final machine code.",
+]
+answer.answer = "`rustc_codegen_llvm` emits LLVM IR for each codegen unit, and LLVM runs its optimization pipeline and code generator (instruction selection, register allocation, encoding) to produce an object file."
+context = """
+The verified split from the dev-guide is blunt: 'rustc doesn't implement codegen itself.' Stage 1 is `rustc` emitting LLVM IR via the FFI in `rustc_codegen_llvm`. Stage 2 is LLVM's full pass pipeline (the bulk of optimization). Stage 3 is LLVM's code generator producing a `.o`. Chapter 16's MIR opts are a small Rust-aware cleanup; the heavy lifting lives in LLVM.
+"""
+id = "80d53a64-9314-4888-8e3f-ebfef672e67b"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is the codegen abstraction crate named `rustc_codegen_ssa`?"
+prompt.distractors = [
+    "Because Static Symbol Analysis is the first pass `rustc` runs on every backend.",
+    "Because the abstraction emits Streaming Source Annotations into the object file.",
+    "Because System Service Architecture is the convention LLVM and Cranelift both export.",
+]
+answer.answer = "Because LLVM IR is in Static Single Assignment form, the shape on the far side of the boundary, so the backend-agnostic layer is shaped around emitting SSA values."
+context = """
+LLVM IR is typed, SSA-form, and mostly target-independent. SSA means every value is assigned exactly once and control-flow merges are reconciled with explicit `phi` nodes. The crate above the backends is named for the form on the far side of the boundary: `rustc_codegen_ssa`.
+"""
+id = "89283215-165f-4fee-8a77-560e7f050c28"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which rustc flag makes `rustc` write out the LLVM IR for your crate as a `.ll` text file?"
+answer.answer = "--emit=llvm-ir"
+answer.alternatives = ["emit=llvm-ir", "--emit llvm-ir", "-emit=llvm-ir"]
+context = """
+`--emit=llvm-ir` writes the LLVM IR `rustc` hands to LLVM as a `.ll` text file. Pair it with `-C codegen-units=1` so the IR is not split across parallel units, and `-O` to see optimized IR. The companion `--emit=llvm-bc` produces bitcode, the compact binary form (and what LTO consumes).
+"""
+id = "d4c760c0-cf44-40d7-9215-3c23c8353055"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What is the purpose of the `'ll` lifetime on `&'ll Value` in `rustc_codegen_llvm`?"
+prompt.distractors = [
+    "It marks LLVM-generated code as having a longer lifetime than `rustc`-generated code.",
+    "It is a placeholder lifetime that gets erased before borrow checking, like `ReErased`.",
+    "It tracks how long an LLVM optimization pass runs before timing out.",
+]
+answer.answer = "It ties each LLVM object's reference to the `Context` that owns it, so Rust's borrow checker statically enforces that no `Value` outlives its `Context` and no `Builder` outlives its module."
+context = """
+LLVM owns its data structures in C++ memory; `rustc` reaches them through opaque pointers modeled as `&'ll T`. The `'ll` lifetime encodes LLVM's own ownership invariants in Rust's type system, so the borrow checker (Chapter 15) polices the foreign C++ heap. This is what makes the FFI safe to build on.
+"""
+id = "7c377540-aff9-4597-aced-e43eec667023"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which LLVM C API function does the LLVM `Builder`'s `BuilderMethods::add` call across the FFI?"
+answer.answer = "LLVMBuildAdd"
+answer.alternatives = ["llvm::LLVMBuildAdd", "llvmbuildadd"]
+context = """
+The Rust-side `Builder::add` is essentially `unsafe { llvm::LLVMBuildAdd(self.llbuilder, a, b, UNNAMED) }`. It is a thin wrapper: one FFI call that appends an `add` instruction to the current block and returns a fresh `&'ll Value`. `cond_br` maps to `LLVMBuildCondBr`, `ret` to `LLVMBuildRet`, and so on across the trait.
+"""
+id = "288eabe3-8f55-4499-b023-6339f0418537"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "If a Rust program behaves correctly at `-O0` but produces wrong results at `-O2`, what should you suspect first?"
+prompt.distractors = [
+    "An LLVM codegen bug in the optimization pass that runs at `-O2` but not `-O0`.",
+    "A bug in `rustc_codegen_llvm`'s `Builder` wrappers, since they only matter at higher opt levels.",
+    "The linker reordered sections differently between debug and release.",
+]
+answer.answer = "Latent undefined behavior in your own (or a dependency's) `unsafe` code, which `-O2`'s optimizations exposed because they assume UB never happens."
+context = """
+The diagnostic discipline §19.2 names: 'it worked in debug, broke in release' is almost always latent UB being exposed, not an LLVM bug. Run under Miri or sanitizers first. Genuine LLVM codegen bugs do exist, but they are the second hypothesis, not the first; reproduce against a specific opt level and LLVM version (§19.1 warns that `rustc` ships a particular patched LLVM and IR is not stable across versions).
+"""
+id = "8be6368f-5d93-4e0a-92ee-a57685297064"

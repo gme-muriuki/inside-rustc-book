@@ -1,0 +1,76 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does the compiler lower from the tree-shaped THIR into the graph-shaped MIR before borrow checking?"
+prompt.distractors = [
+    "Because tree IRs are too memory-hungry to scale to large crates, while CFGs use less memory.",
+    "Because LLVM only accepts CFG-shaped input, and MIR is the closest legal form.",
+    "Because the borrow checker is a single-pass linter and a CFG is just easier to walk in order.",
+]
+answer.answer = "Borrow checking is a flow-sensitive question (along every execution path, are aliasing and ownership rules upheld?), and flow-sensitive analyses are defined over a control-flow graph of basic blocks, not over a tree."
+context = """
+Trees express containment, not sequence. A `match` is one node but several paths; an `if` is one node but a fork. To reason about what happens in what order along which branch the analysis needs the program shaped like execution itself, which is exactly the CFG of basic blocks ending in branching terminators that MIR provides.
+"""
+id = "7067e94a-2be9-4949-a6fe-1d10c287c57b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `Local` index, defined as a named constant on the `Local` newtype, is reserved for a function's return value in MIR?"
+answer.answer = "_0"
+answer.alternatives = ["0", "RETURN_PLACE", "_0 (RETURN_PLACE)", "Local 0"]
+context = """
+`rustc_middle::mir` defines `newtype_index! { pub struct Local { const RETURN_PLACE = 0; } }`, so `_0` is always the return place; arguments occupy `_1..=arg_count` and the rest are bindings and temporaries.
+"""
+id = "4b72cc9e-5f0b-4c53-9d47-9762a8048c84"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why must `a + b * c` lower to two MIR assignments (`_t = b * c; _r = a + _t`) rather than one nested expression?"
+prompt.distractors = [
+    "Because LLVM requires every multiplication to live in its own basic block.",
+    "Because the borrow checker cannot trace dataflow across operator precedence.",
+    "Because MIR re-uses HIR nodes verbatim, and HIR forbids nested arithmetic.",
+]
+answer.answer = "Because `Rvalue::BinaryOp` takes `Operand`s, not other `Rvalue`s. The place / operand / rvalue trichotomy makes nesting structurally impossible, enforcing three-address flatness."
+context = """
+The grammar is strict: a `Statement::Assign` pairs a `Place` with an `Rvalue`; an `Rvalue` is built from `Operand`s; an `Operand` is a `Place` read or a constant. Rvalues cannot contain rvalues, so any nested computation is forced into its own assignment to a fresh temporary.
+"""
+id = "fa4ae815-127c-4d48-9716-1c9017717fbe"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `TerminatorKind` variant does the MIR builder use to lower an `if` condition (and fieldless-enum `match` discriminants) into a fork in the CFG?"
+answer.answer = "SwitchInt"
+answer.alternatives = ["TerminatorKind::SwitchInt", "switchInt", "switch_int"]
+context = """
+`if c { A } else { B }` becomes a `SwitchInt { discr: c, targets: { 0 to else_blk, otherwise to then_blk } }` terminator, built via the `TerminatorKind::if_` helper that wraps `SwitchTargets::static_if(0, false_blk, true_blk)`. The same mechanism handles fieldless enum `match`es; for enums with fields the builder first reads the discriminant into a temp.
+"""
+id = "10b62096-b664-45eb-92d6-c86c6fe4060c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What is the purpose of the `BlockAnd<T>` newtype and the `unpack!` macro inside the MIR builder?"
+prompt.distractors = [
+    "They wrap MIR errors so the builder can recover from malformed THIR.",
+    "They batch multiple statements together so they emit atomically into a basic block.",
+    "They mark blocks that need post-borrowck cleanup before codegen.",
+]
+answer.answer = "They thread the **current block** through the recursion: each lowering step consumes a block and returns `BlockAnd<T>` (a value plus the block control ends up in), and `unpack!` binds the value while reassigning the current-block variable in one move."
+context = """
+`BlockAnd<T>(BasicBlock, T)` carries a `#[must_use]` warning ('if you don't use one of these results, you're leaving a dangling edge'). The pattern guarantees CFG well-formedness: every block ends with exactly one terminator, and every lowering step accounts for where control went.
+"""
+id = "b70ba9e9-d7c5-41ed-86b4-ac9069c805b9"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In §14.3's lowering of `let x = if c { 1 } else { 2 };`, why do both the `then` and `else` arms get lowered into the *same* destination place?"
+prompt.distractors = [
+    "Because the borrow checker rejects two distinct destination places for one binding.",
+    "Because MIR cannot represent two separate writes to different locals for the same `let`.",
+    "Because the join block must read both arm-results, and reading from one place is faster.",
+]
+answer.answer = "Because `if` is an expression that yields one value: both arms must store their result into the place that holds the expression's value. This is the operational reason an `if`-without-`else` must have unit type and an `if` with two arms requires both branches to agree on type."
+context = """
+The MIR builder calls `expr_into_dest(destination, then_blk, then)` and `expr_into_dest(destination, else_blk, else_expr)` with the same `destination` argument. If the `else` arm is missing the builder injects an assignment of `()` to that same destination, which only typechecks if the `then` arm is also `()`.
+"""
+id = "424639b5-76f6-475f-8a8d-98c8258b87e4"
+

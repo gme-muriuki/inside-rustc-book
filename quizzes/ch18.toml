@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is the backend-agnostic MIR walk in `rustc_codegen_ssa` written against generics and associated types (`B: BuilderMethods` with `B::Value`) rather than `dyn Builder` trait objects?"
+prompt.distractors = [
+    "Trait objects cannot be used inside `rustc` because the compiler disables dynamic dispatch entirely.",
+    "Associated types let one global table of function pointers serve all backends simultaneously.",
+    "Trait objects would require all backends to share one concrete `Value` type, which LLVM and Cranelift cannot do.",
+]
+answer.answer = "Generics with associated types monomorphize into direct, inlinable calls to the specific backend's methods, so the trait organization is a source-level device the type system resolves before any code is generated; there is no runtime indirection in the hot codegen path."
+context = """
+The codegen path is hot enough that virtual dispatch through `dyn Builder` would be a real cost. Because `BuilderMethods` is used as a generic bound, monomorphization (Chapter 17) stamps out one specialized copy of the walk per backend, and each `bx.add` call resolves statically to that backend's `add` implementation. `Self::Value` is a placeholder the backend fills in at compile time, not a virtual call at runtime.
+"""
+id = "2aafeaaf-768b-478c-9b4e-c96251cf37d1"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `rustc_codegen_ssa` struct is the per-function master context that drives the MIR walk and is generic over `Bx: BuilderMethods`?"
+answer.answer = "FunctionCx"
+answer.alternatives = ["functioncx", "FunctionCx<'a, 'tcx, Bx>", "`FunctionCx`"]
+context = """
+`FunctionCx` (in `rustc_codegen_ssa/src/mir/mod.rs`) is the master context for codegenning one function from its MIR. It is entirely generic over the backend: its `llfn` is `Bx::Function`, its `cached_llbbs` is keyed by `Bx::BasicBlock`, its `locals` carry `Bx::Value`. The same source, monomorphized for LLVM's builder, drives LLVM; monomorphized for Cranelift's, drives Cranelift.
+"""
+id = "05842d3b-eedf-4d68-9554-26597913b83e"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In `rustc_codegen_ssa`, a MIR local can be represented at codegen time by one of the `LocalRef` variants. Which variant lets the local skip its stack allocation and live as a direct SSA value when its type is immediate?"
+prompt.distractors = [
+    "`LocalRef::Place`",
+    "`LocalRef::UnsizedPlace`",
+    "`LocalRef::PendingOperand`",
+]
+answer.answer = "`LocalRef::Operand`"
+context = """
+The four variants of `LocalRef` are `Place(PlaceRef)`, `UnsizedPlace(PlaceRef)`, `Operand(OperandRef)`, and `PendingOperand`. A local "is usually a `PlaceRef` representing an alloca, but not always: sometimes we can skip the alloca and just store the value directly using an `OperandRef`, which makes for tighter LLVM IR." The condition is that the local's type is immediate (a scalar that fits in a register), so a `u64` local can live in SSA form with no memory traffic.
+"""
+id = "e35ad4a4-0967-48c1-8bd7-18e283ddb0f3"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When `codegen_terminator` in `rustc_codegen_ssa::mir::block` lowers a two-target `SwitchInt` (the `if` case from §14.3), which abstract builder method does it ultimately call?"
+prompt.distractors = [
+    "`bx.switch`, regardless of how many targets the SwitchInt has",
+    "`bx.br`, after collapsing the two targets into one",
+    "`bx.call`, because conditionals are lowered as calls to a runtime helper",
+]
+answer.answer = "`bx.cond_br` (a single abstract conditional-branch call), with the targets resolved through cached backend `BasicBlock` handles. The n-way case dispatches to `bx.switch` instead."
+context = """
+The two-target path of `codegen_switchint_terminator` compares the discriminant against the test value with `bx.icmp(IntPredicate::IntEQ, ...)` (or uses it directly for `bool`) and then calls `bx.cond_br(cond, lltarget, llotherwise)`. Real rustc actually calls `bx.cond_br_with_expect`, whose default impl forwards to `bx.cond_br`. The n-way path calls `bx.switch`, and each target is looked up through `helper.llbb_with_cleanup`, the §18.2 `cached_llbbs` table.
+"""
+id = "6d92417f-c4b0-41ce-9d9c-171b169eb17e"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What happens if an upstream phase produces malformed MIR that violates a codegen assumption?"
+prompt.distractors = [
+    "Codegen emits a normal compile error pointing at the offending source span.",
+    "Codegen automatically re-runs the borrow checker to repair the MIR.",
+    "The driver re-routes the function to a fallback backend (Cranelift) that is more permissive.",
+]
+answer.answer = "Codegen either emits subtly wrong machine code (a miscompilation) or hits an `assert` / `bug!` and produces an internal compiler error (ICE) deep in the backend; codegen has no error-reporting path because correct MIR is a precondition."
+context = """
+By the time `codegen_mir` runs, every check is done: types proven, traits resolved, patterns exhaustive, borrows sound, constants evaluated. Codegen assumes all of this and simply translates. ICEs in `rustc_codegen_*` are taken so seriously because they almost always indicate a bug upstream (in whatever produced the bad MIR), and a silent miscompile is the worst kind of compiler bug. Codegen is the messenger, not the source.
+"""
+id = "e890e03a-6866-4373-ad33-7775dbcba792"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which terminator does the chapter call out as the genuinely complex case in `codegen_terminator`, because it must honor the ABI and add edges to landing pads for unwinding?"
+answer.answer = "Call"
+answer.alternatives = ["call", "TerminatorKind::Call", "`Call`", "TerminatorKind::Call (function call)"]
+context = """
+`Call` is the verified "most complicated and most interesting" terminator. A function call must honor the ABI (registers vs by pointer, return value, calling convention) and the unwinding machinery (a call that might panic needs an edge to a landing pad so destructors run). `codegen_call_terminator` handles all of this, and the `FunctionCx` fields `funclets`, `landing_pads`, and `cleanup_kinds` exist solely for the unwinding case.
+"""
+id = "1b860534-6200-45d0-8f34-f91448d7c405"

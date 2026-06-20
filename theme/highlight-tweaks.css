@@ -1,0 +1,193 @@
+/* IDE-grade syntax highlight palette for highlight.js code blocks.
+   Lives outside mdBook's bundled highlight CSS so a future mdBook upgrade
+   does not overwrite it. Wired via book.toml additional-css.
+
+   Dark themes (.ayu / .coal / .navy) get a One-Dark-Pro-inspired palette;
+   the light theme (.light) and the rust theme (.rust) get One Light.
+   Only token classes are touched — code-block background, padding, copy
+   button, and other mdBook chrome are left alone. */
+
+/* ============================================================ */
+/* ONE DARK PRO  (for .ayu, .coal, .navy)                       */
+/* ============================================================ */
+
+.ayu pre code .hljs-keyword,
+.coal pre code .hljs-keyword,
+.navy pre code .hljs-keyword,
+.ayu pre code .hljs-selector-tag,
+.coal pre code .hljs-selector-tag,
+.navy pre code .hljs-selector-tag {
+    color: #C678DD;                  /* purple: fn, let, struct, impl, pub, mut, use, mod, if, else, match, for, while, return */
+    font-weight: normal;
+}
+
+.ayu pre code .hljs-string,
+.coal pre code .hljs-string,
+.navy pre code .hljs-string,
+.ayu pre code .hljs-regexp,
+.coal pre code .hljs-regexp,
+.navy pre code .hljs-regexp {
+    color: #98C379;                  /* green: "hello", r"raw", '\n' */
+}
+
+.ayu pre code .hljs-comment,
+.coal pre code .hljs-comment,
+.navy pre code .hljs-comment,
+.ayu pre code .hljs-quote,
+.coal pre code .hljs-quote,
+.navy pre code .hljs-quote {
+    color: #7C8290;                  /* muted gray: line-comments and block-comments */
+    font-style: italic;
+}
+
+.ayu pre code .hljs-type,
+.coal pre code .hljs-type,
+.navy pre code .hljs-type,
+.ayu pre code .hljs-class .hljs-title,
+.coal pre code .hljs-class .hljs-title,
+.navy pre code .hljs-class .hljs-title,
+.ayu pre code .hljs-built_in,
+.coal pre code .hljs-built_in,
+.navy pre code .hljs-built_in {
+    color: #E5C07B;                  /* gold: Vec, String, Option, Result, Box, types */
+}
+
+.ayu pre code .hljs-title,
+.coal pre code .hljs-title,
+.navy pre code .hljs-title,
+.ayu pre code .hljs-function .hljs-title,
+.coal pre code .hljs-function .hljs-title,
+.navy pre code .hljs-function .hljs-title,
+.ayu pre code .hljs-title.function_,
+.coal pre code .hljs-title.function_,
+.navy pre code .hljs-title.function_ {
+    color: #61AFEF;                  /* blue: function names */
+}
+
+.ayu pre code .hljs-number,
+.coal pre code .hljs-number,
+.navy pre code .hljs-number,
+.ayu pre code .hljs-symbol,
+.coal pre code .hljs-symbol,
+.navy pre code .hljs-symbol {
+    color: #D19A66;                  /* orange: 42, 0xFF, 'a (lifetime) */
+}
+
+.ayu pre code .hljs-literal,
+.coal pre code .hljs-literal,
+.navy pre code .hljs-literal {
+    color: #56B6C2;                  /* cyan: true, false, None, Some, Ok, Err */
+}
+
+.ayu pre code .hljs-meta,
+.coal pre code .hljs-meta,
+.navy pre code .hljs-meta,
+.ayu pre code .hljs-meta-keyword,
+.coal pre code .hljs-meta-keyword,
+.navy pre code .hljs-meta-keyword {
+    color: #D19A66;                  /* orange: #[derive(...)], #![attr] */
+}
+
+.ayu pre code .hljs-variable,
+.coal pre code .hljs-variable,
+.navy pre code .hljs-variable,
+.ayu pre code .hljs-attr,
+.coal pre code .hljs-attr,
+.navy pre code .hljs-attr {
+    color: #E06C75;                  /* soft red: variable / parameter names */
+}
+
+.ayu pre code .hljs-params,
+.coal pre code .hljs-params,
+.navy pre code .hljs-params {
+    color: #ABB2BF;                  /* neutral: parameter group text (commas, brackets) */
+}
+
+.ayu pre code .hljs-operator,
+.coal pre code .hljs-operator,
+.navy pre code .hljs-operator,
+.ayu pre code .hljs-punctuation,
+.coal pre code .hljs-punctuation,
+.navy pre code .hljs-punctuation {
+    color: #ABB2BF;                  /* neutral: operators / punctuation */
+}
+
+/* ============================================================ */
+/* ONE LIGHT  (for .light and .rust themes)                     */
+/* ============================================================ */
+
+.light pre code .hljs-keyword,
+.rust pre code .hljs-keyword,
+.light pre code .hljs-selector-tag,
+.rust pre code .hljs-selector-tag {
+    color: #A626A4;                  /* purple */
+    font-weight: normal;
+}
+
+.light pre code .hljs-string,
+.rust pre code .hljs-string,
+.light pre code .hljs-regexp,
+.rust pre code .hljs-regexp {
+    color: #50A14F;                  /* green */
+}
+
+.light pre code .hljs-comment,
+.rust pre code .hljs-comment,
+.light pre code .hljs-quote,
+.rust pre code .hljs-quote {
+    color: #8C8C9C;                  /* muted gray */
+    font-style: italic;
+}
+
+.light pre code .hljs-type,
+.rust pre code .hljs-type,
+.light pre code .hljs-class .hljs-title,
+.rust pre code .hljs-class .hljs-title,
+.light pre code .hljs-built_in,
+.rust pre code .hljs-built_in {
+    color: #C18401;                  /* brown/gold */
+}
+
+.light pre code .hljs-title,
+.rust pre code .hljs-title,
+.light pre code .hljs-function .hljs-title,
+.rust pre code .hljs-function .hljs-title,
+.light pre code .hljs-title.function_,
+.rust pre code .hljs-title.function_ {
+    color: #4078F2;                  /* blue */
+}
+
+.light pre code .hljs-number,
+.rust pre code .hljs-number,
+.light pre code .hljs-symbol,
+.rust pre code .hljs-symbol {
+    color: #986801;                  /* dark orange / brown */
+}
+
+.light pre code .hljs-literal,
+.rust pre code .hljs-literal {
+    color: #0184BC;                  /* cyan */
+}
+
+.light pre code .hljs-meta,
+.rust pre code .hljs-meta,
+.light pre code .hljs-meta-keyword,
+.rust pre code .hljs-meta-keyword {
+    color: #986801;                  /* dark orange */
+}
+
+.light pre code .hljs-variable,
+.rust pre code .hljs-variable,
+.light pre code .hljs-attr,
+.rust pre code .hljs-attr {
+    color: #E45649;                  /* soft red */
+}
+
+.light pre code .hljs-params,
+.rust pre code .hljs-params,
+.light pre code .hljs-operator,
+.rust pre code .hljs-operator,
+.light pre code .hljs-punctuation,
+.rust pre code .hljs-punctuation {
+    color: #383A42;                  /* near-black text */
+}

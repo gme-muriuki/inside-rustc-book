@@ -1,0 +1,73 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What is the structural difference between `rustc` and a classical C compiler that the rest of the book turns on?"
+prompt.distractors = [
+    "`rustc` runs more optimization passes than C compilers do.",
+    "`rustc` emits prettier diagnostics than C compilers do.",
+    "`rustc` parses with a hand-written recursive-descent parser instead of a generated one.",
+]
+answer.answer = "`rustc` proves a safety theorem about your program **before** it translates it; the proof obligation reshapes the pipeline into a chain of progressively simpler IRs."
+context = """
+The classic Dragon Book pipeline is shaped for *translation*. Once you require the compiler to also *prove* a safety theorem (no use-after-free, double-free, or data races in safe Rust), you cannot keep the pipeline straight: the proof needs a control-flow graph (MIR), and getting to a clean CFG requires the chain AST -> HIR -> THIR -> MIR. That is the deformation §1.1 names.
+"""
+id = "10cbbb6b-5868-4751-9ddf-bf044897432b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which intermediate representation does `rustc`'s borrow checker actually run its dataflow analysis on?"
+answer.answer = "MIR"
+answer.alternatives = ["mir", "Mid-level IR", "Mid-level Intermediate Representation"]
+context = """
+Borrow checking is a dataflow problem over a control-flow graph. The AST does not give you a CFG cheaply, so the language grew MIR specifically as the rung on which `rustc_borrowck` runs. The entry query is `mir_borrowck`.
+"""
+id = "9d81df2a-96fe-4ed4-a423-d150ebd339a3"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The chapter names five Rust features that each force a specific `rustc` stage into existence. Which feature forced the trait solver (`rustc_next_trait_solver`)?"
+prompt.distractors = [
+    "Ownership and borrowing",
+    "Lifetimes as types",
+    "Macros",
+]
+answer.answer = "Traits and coherence"
+context = """
+Each of the five features (ownership, traits, zero-cost abstractions, macros, lifetimes-as-types) is paired with a stage it created. Traits and coherence are what require an obligation engine: a separate phase that decides, for every generic call site, *which* implementation applies. That phase is the trait solver."""
+id = "051b95b4-595e-4d76-b058-26faa2e14504"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Look at §1.1's redrawn `rustc` pipeline diagram. Four stages are marked with a star (★) as the *proving* stages. Which set is correct?"
+prompt.distractors = [
+    "Lexing, parsing, name resolution, borrow checking.",
+    "HIR lowering, MIR building, MIR optimization, codegen.",
+    "Type checking, MIR optimization, monomorphization, linking.",
+]
+answer.answer = "Type checking, the trait solver, borrow checking, and monomorphization collection."
+context = """
+The star marks where `rustc` is doing the work that a translator does not: proving the type theorem (`rustc_hir_typeck`), discharging trait obligations (`rustc_next_trait_solver`), proving the safety theorem (`rustc_borrowck`), and expanding generics (`rustc_monomorphize`'s collector). A large fraction of the book lives inside those four stages.
+"""
+id = "3e141bda-ed23-4601-aaeb-b7f6f79fa73b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `-Zunpretty` mode prints the MIR as a Graphviz control-flow graph (rather than as text)?"
+answer.answer = "mir-cfg"
+answer.alternatives = ["-Zunpretty=mir-cfg", "Zunpretty=mir-cfg"]
+context = """
+`-Zunpretty` accepts 16 mode strings in total, parsed by `parse_pretty` in `compiler/rustc_session/src/config.rs`. `mir-cfg` is the one that emits a rendered CFG; `mir` (without `-cfg`) emits the same information as text. Pair `mir-cfg` with `dot` or any Graphviz viewer to see the CFG the borrow checker actually reads.
+"""
+id = "53a0ad8f-5bce-4eab-bd83-58a5f20b4bfc"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The default `MonoItemCollectionStrategy` in `compiler/rustc_monomorphize/src/collector.rs` is `Lazy`. Under that strategy, what happens to a generic function declared in your crate but never *called* from `main`?"
+prompt.distractors = [
+    "It is monomorphized for the unit type `()` so the symbol exists.",
+    "It is monomorphized once for every type parameter declared on it.",
+    "The compiler emits an error: dead generic.",
+]
+answer.answer = "No instantiation is produced. The collector only follows reachable calls, so an unreachable generic produces zero `MonoItem::Fn`s. (Passing `-Clink-dead-code` flips the strategy to `Eager` and forces all generics to be instantiated.)"
+context = """
+You can observe this directly: run `rustc +nightly -Zprint-mono-items mono.rs` on a file containing `fn dead<T>(_: T) {}` and grep for `dead::`: nothing. Re-run with `-Clink-dead-code` added and `dead::<…>` appears. The strategy is chosen by `tcx.sess.link_dead_code()` inside `collect_and_partition_mono_items`."""
+id = "8e816882-a5ce-4bba-9ff1-101b01b73cc8"

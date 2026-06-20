@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The chapter argues that `rustc`, like GCC and Clang, hand-writes its lexer instead of generating a finite-state automaton from regular expressions. Which reason does §5.1 identify as the deepest, the one that organizes the rest of the chapter?"
+prompt.distractors = [
+    "Hand-written lexers run faster than DFA tables.",
+    "Generated lexers cannot recognize Rust's keywords.",
+    "Hand-written lexers produce richer diagnostics than DFAs do.",
+]
+answer.answer = "Reusability: splitting the scanner into a pure, dependency-light core (`rustc_lexer`) lets rustfmt, rust-analyzer, and rustdoc share the exact same lexing logic without dragging in the rest of the compiler."
+context = """
+§5.1 lists three reasons (diagnostics, control over non-regular corners, reusability) in increasing order of importance. Reusability is called the real one: a monolithic, generated lexer welded to the compiler's data structures could not be shared. That decision forces the two-layer split into `rustc_lexer` and `rustc_parse::lexer`.
+"""
+id = "e85e5744-df27-4f44-92c0-fa4eebe3be1b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which two fields make up `rustc_lexer::Token`, the lean Layer-1 token?"
+answer.answer = "kind and len"
+answer.alternatives = ["kind, len", "TokenKind and length", "kind + len", "kind and length"]
+context = """
+The faithful definition is `pub struct Token { pub kind: TokenKind, pub len: u32 }`. No span, no interned symbol, no value. Length plus the driver's running byte offset is all Layer 2 needs to build a `Span`. The static-asserted size on 64-bit is 12 bytes.
+"""
+id = "0f391669-4da4-4554-a92f-a7b9775b5b7c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Feed the source `a == b` to `rustc_lexer`. How many tokens does it emit for the `==`?"
+prompt.distractors = [
+    "One: an `EqEq` token, by maximal munch.",
+    "One: an `Eq` token followed by an implicit fusion flag.",
+    "Three: `Eq`, a zero-width joiner, `Eq`.",
+]
+answer.answer = "Two: two separate `Eq` tokens, because Layer 1 never fuses operator characters."
+context = """
+This is §5.2's central design point. Layer 1 emits single-character punctuation only; `EqEq`, `Shr`, `RArrow`, and the rest are Layer 2 fusions performed by `TokenStream::try_glue_to_last` using the `Spacing::Joint` tag. The lab in §5.4 lets you observe the two `Eq`s by running `ra-ap-rustc_lexer` on the same input.
+"""
+id = "9163a953-a93a-4694-a1fa-16ec70f89fd5"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why must `rustc_lexer`'s `block_comment` helper keep an explicit `depth` counter rather than being expressible as a regular expression?"
+prompt.distractors = [
+    "Because block comments may contain Unicode characters that lie outside ASCII.",
+    "Because doc comments (`/** ... */`) need to be distinguished from ordinary comments.",
+    "Because rustc must report a span for the comment, and regexes do not produce spans.",
+]
+answer.answer = "Because Rust block comments nest arbitrarily (`/* /* */ */`), and counting unbounded nesting depth is beyond the power of any finite-state automaton."
+context = """
+Regular languages are exactly those recognized by finite automata, which by definition have no unbounded counter. Matching balanced nested delimiters needs at least pushdown power. The same impossibility appears in counted-hash raw strings (`r##\"...\"##`), which is the second non-regular feature §5.3 calls out as forcing hand-writing.
+"""
+id = "0cf9956e-5420-42fe-9351-c2f7bfd00103"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What sentinel character does the `Cursor` return from `first()`, `second()`, and `third()` past the end of input, so the hot path can stay branch-free?"
+answer.answer = "EOF_CHAR"
+answer.alternatives = ["'\\0'", "\\0", "null", "0x00", "the null character", "EOF_CHAR ('\\0')"]
+context = """
+`const EOF_CHAR: char = '\\0'`. Returning this null character past the end means the big `match` in `advance_token` never has to peel an `Option` on every peek; end-of-input simply falls through to the default arm or is caught at the `bump()` site. It is the same sentinel trick C uses with `'\\0'` as a string terminator.
+"""
+id = "3c2c759a-51fd-40c1-a8fc-6399e9db2715"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You write the integer literal `1f32` in your source. What does `rustc_lexer` classify it as?"
+prompt.distractors = [
+    "A `Literal` of `LiteralKind::Float`, because the `f32` suffix marks it as floating-point.",
+    "A `Literal` of `LiteralKind::Int` followed by a separate `Ident` token for `f32`.",
+    "An invalid literal: integers cannot carry float suffixes.",
+]
+answer.answer = "A single `Literal` whose `kind` is `LiteralKind::Int`, with `suffix_start` pointing at the `f`; reclassification to `Float` happens later, at AST literal construction."
+context = """
+§5.2 calls this the deliberate coarseness: the suffix is not considered when picking the `LiteralKind`, so lexically `1f32` begins with an integer `1` and is tagged `Int`. The dev-guide and `compiler/rustc_parse/src/lexer/mod.rs::cook_lexer_literal` confirm this; the suffix-driven reclassification to a float lives in `rustc_ast::util::literal::integer_lit`. This is also the practical reminder that there are three distinct literal enums in the front end (`rustc_lexer::LiteralKind`, `rustc_ast::token::LitKind`, `rustc_ast::ast::LitKind`).
+"""
+id = "819ccd64-4699-49ef-a8fe-aee6b6393e3f"

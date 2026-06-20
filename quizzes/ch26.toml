@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 26's thesis is that the architecture of Parts 0 to 4 is a *map* from an issue's symptom to a location in the source. A user reports: 'rustc rejects this valid borrow.' Which crate is the first place to look?"
+prompt.distractors = [
+    "`rustc_hir_typeck`, because borrow rejection is a type error in disguise.",
+    "`rustc_lint`, because borrow violations are emitted as a built-in lint.",
+    "`rustc_trait_selection`, because borrow rejection comes from the trait solver discharging an `Unsize` obligation.",
+]
+answer.answer = "`rustc_borrowck`: a wrong-rejection symptom on a borrow names the borrow checker (Chapter 15, NLL region inference)."
+context = """
+The §26.1 map: confusing type error -> `rustc_hir_typeck` + `rustc_errors`; wrong borrow rejection -> `rustc_borrowck`; wrong impl pick -> `rustc_trait_selection`; missing warning -> `rustc_lint`; slow rebuild -> the query dep-graph. Symptom names the phase, phase names the crate.
+"""
+id = "9d30a87a-3b41-47d2-9ab4-bb6f4b68fa73"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The dev-guide gives a verified rule for when a new diagnostic should be a **lint** (user-controllable `allow`/`warn`/`deny`) versus a **fixed error** the user cannot silence. Which option captures the rule?"
+prompt.distractors = [
+    "Lints are for errors that affect performance; fixed errors are for errors that affect correctness.",
+    "Lints are for warnings emitted before MIR construction; fixed errors are for anything emitted after.",
+    "Lints are for stable code; fixed errors are for nightly-only features.",
+]
+answer.answer = "Lints are for things the user might legitimately want to turn off; fixed errors are for genuine violations (borrow-checker errors are the verified example: the user cannot adjust the level to silence them)."
+context = """
+§26.1 cites the dev-guide directly: borrow-checker errors are 'fixed errors. The user cannot adjust the level of these diagnostics to silence the borrow checker.' And on whether to give an error a code, the rule is 'give an error a code (with an associated explanation) if the explanation would give more information than the error itself.' When unsure: ask your reviewer.
+"""
+id = "e838e152-c2c0-456e-8d5a-ac2078172f79"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which single `compiletest` directive (written as `//@ <directive>` at the top of a UI test) makes the harness *apply* a suggestion to the source and recompile the resulting `.fixed` file to prove the fix yields correct code?"
+answer.answer = "run-rustfix"
+answer.alternatives = ["//@ run-rustfix", "run rustfix", "//@run-rustfix"]
+context = """
+`//@ run-rustfix` is the verified directive (sets `self.props.run_rustfix` in `compiletest`); after running the test, rustfix splices each suggestion into the source's span, writes a `.fixed` file, and the harness recompiles it. For mixed-confidence cases there is also `//@ rustfix-only-machine-applicable`, which filters down to `Applicability::MachineApplicable` suggestions only (the `Filter::MachineApplicableOnly` branch in `runtest/ui.rs`).
+"""
+id = "78bde502-d4bc-4559-8720-ec87b53860e3"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "§26.2 lists the three ingredients a `span_suggestion` needs at its emission site. Which set is correct?"
+prompt.distractors = [
+    "A `DefId` for the function, a Fluent message key, and a recursion-depth limit.",
+    "A `BorrowIndex`, a `RegionVid`, and a `MoveData` snapshot of the body.",
+    "An `Instance<'tcx>`, a `MonoItem`, and a codegen unit hint.",
+]
+answer.answer = "A `Span` (Chapter 6) to apply the fix to, the replacement text (a literal, or built from `SourceMap::span_to_snippet` with a fallback when that fails), and an honest `Applicability` (`MachineApplicable` only if the fix is always correct)."
+context = """
+§26.2 walks the three: span (the convenient site-span is not always the exact replacement-span; verify), replacement (`span_to_snippet` returns `Result<String, SpanSnippetError>` because macro-generated spans have no snippet, so degrade to `span_help` when it fails), and `Applicability` (over-claiming `MachineApplicable` breaks `cargo fix`).
+"""
+id = "c4f88d3d-22ad-47ab-8dbe-1918b22e81a5"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "After a reviewer is satisfied with your PR, what is the exact command form they post on the PR to approve it, triggering the merge queue?"
+prompt.distractors = [
+    "`bors r+ --merge`",
+    "`@bors merge`",
+    "`@bors approve`",
+]
+answer.answer = "`@bors r+` (which flips the PR to `S-waiting-on-bors`; bors then runs the full test suite on the merge commit, possibly batched into a rollup, and lands the change in the next nightly if green)."
+context = """
+The verified approval syntax is `@bors r+` (and `@bors r+ rollup` for rollup batching), documented in `src/doc/rustc-dev-guide/src/contributing.md:259-274`. bors is the gating mechanism that keeps `main` green: it merges only after the full suite passes on the merge commit, so a green run lands within roughly a day in nightly.
+"""
+id = "abaa6414-2eb7-4625-ba5f-bfb5011953e1"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the name of the `rustc_span::SourceMap` method used to fetch the original source text covered by a `Span`, returning a `Result` because macro-generated spans have no snippet?"
+answer.answer = "span_to_snippet"
+answer.alternatives = ["SourceMap::span_to_snippet", "sm.span_to_snippet", "source_map().span_to_snippet"]
+context = """
+Verified: `pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError>` at `compiler/rustc_span/src/source_map.rs:626`. The `Result` is why §26.2 stresses the fallback idiom: try the snippet for a concrete suggestion, degrade to `span_help` if it fails (e.g. when the span is macro-generated).
+"""
+id = "08b53642-a945-451c-a1e7-5d335c762005"

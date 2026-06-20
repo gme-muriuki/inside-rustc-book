@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does rustc need monomorphization at all, instead of compiling a generic function like `fn max<T: Ord>(...)` once and reusing it?"
+prompt.distractors = [
+    "Because LLVM does not support polymorphic IR, so the source must be specialized before lowering.",
+    "Because the borrow checker needs concrete types to verify safety, and that proof only runs per-instantiation.",
+    "Because trait resolution is deferred until the back end and only completes once concrete types are known.",
+]
+answer.answer = "Because machine code needs concrete sizes and concrete operations: a CPU cannot execute a compare on some abstract `T`, so the back end stamps out a specialized copy per concrete instantiation to keep the zero-cost-abstraction promise."
+context = """
+Type erasure (Java, Go interfaces, Haskell) is the alternative: one copy, boxed values, vtable dispatch, small binary but runtime cost. Rust picks monomorphization (one specialized copy per concrete type) to make `max::<u8>` exactly the code you would write by hand. The price is more code: compile time and binary size grow with instantiations.
+"""
+id = "a1d8f33d-dfe5-4780-a654-225552181564"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the two-field data type that pairs a generic item (a DefId, wrapped) with the concrete type arguments it was specialized with?"
+answer.answer = "Instance"
+answer.alternatives = ["instance", "Instance<'tcx>", "ty::Instance"]
+context = """
+`Instance<'tcx> { def: InstanceKind<'tcx>, args: GenericArgsRef<'tcx> }` lives at `compiler/rustc_middle/src/ty/instance.rs:33-38`. It is a lightweight recipe, not a copy of MIR: codegen instantiates the body on the fly using `args`. `max::<u8>` is `Instance { def: Item(max_def_id), args: [u8] }`.
+"""
+id = "70d26623-a573-4722-9d87-c2b33dcbe54c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The collector pushes `MonoItem`s onto a work list. According to `compiler/rustc_middle/src/mir/mono.rs`, which three variants does `MonoItem<'tcx>` actually have?"
+prompt.distractors = [
+    "Fn, Method, Drop",
+    "Item, Shim, Intrinsic",
+    "Fn, Static, Closure",
+]
+answer.answer = "Fn(Instance), Static(DefId), GlobalAsm(ItemId)"
+context = """
+The three-variant `MonoItem` is the work-list element. Function-like items (including drop glue, intrinsics, virtual slots, closures, and all shims) flow through `Fn(Instance)`; the kind-of-MIR distinction lives inside `InstanceKind`, which has 15 variants at 1.95.0 (Item, Intrinsic, VTableShim, ReifyShim, FnPtrShim, Virtual, ClosureOnceShim, ConstructCoroutineInClosureShim, ThreadLocalShim, FutureDropPollShim, DropGlue, CloneShim, FnPtrAddrShim, AsyncDropGlueCtorShim, AsyncDropGlue).
+"""
+id = "b606c0ce-6a8e-418c-8b9a-0e461d88630d"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In `MirUsedCollector`, what two-step ordering must the collector follow when it sees a Call terminator carrying generic types? Name the two operations in order."
+answer.answer = "monomorphize then resolve"
+answer.alternatives = ["monomorphize, resolve", "monomorphize-then-resolve", "monomorphize and then resolve"]
+context = """
+`monomorphize` substitutes the enclosing instance's args into the callee's `FnDef(def_id, args)` so the types become concrete; only then can `Instance::try_resolve` (backed by `tcx.resolve_instance_raw`) pick the impl. Resolution needs concrete types: you cannot select which `impl Ord` provides `cmp` for `T` until you know `T = u8`. Reverse the order and resolution has nothing to bite on.
+"""
+id = "e7d68170-e6b4-41de-b83d-22df4df291bd"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The collector runs in two modes, `CollectionMode::UsedItems` and `CollectionMode::MentionedItems`. Why does the mentioned-items mode exist alongside used-items?"
+prompt.distractors = [
+    "MentionedItems collects items from upstream crates; UsedItems collects only this crate's items.",
+    "MentionedItems is the parallel work list; UsedItems is the sequential fallback used when parallel codegen is disabled.",
+    "MentionedItems is used for documentation generation; UsedItems is used for actual codegen.",
+]
+answer.answer = "MentionedItems is computed before MIR optimizations so that const-eval errors in code an optimization later removes are still reported, instead of silently vanishing at higher opt levels."
+context = """
+If a function containing a const-eval error gets optimized away, the `UsedItems` set no longer includes it, so the error would disappear at `-O` and reappear in debug builds, a nightmare of optimization-dependent compile errors. `MentionedItems` is collected from pre-optimization MIR specifically to pin those checks. See `compiler/rustc_middle/src/mir/mono.rs::CollectionMode`.
+"""
+id = "f0b592b8-092d-482f-8f8c-2b14c91eb783"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The default `MonoItemCollectionStrategy` at 1.95.0 is `Lazy`. Which flag flips it to `Eager`, causing every generic in the crate to be instantiated even if no call reaches it?"
+prompt.distractors = [
+    "-Zprint-mono-items",
+    "-Cembed-bitcode=yes",
+    "-Zpolymorphize=on",
+]
+answer.answer = "-Clink-dead-code"
+context = """
+The selection lives in `compiler/rustc_monomorphize/src/partitioning.rs:1131-1136`: `if tcx.sess.link_dead_code() { Eager } else { Lazy }`. In Lazy mode the collector follows only reachable calls, which is why an uncalled generic function never gets instantiated. In Eager mode (used when `-Clink-dead-code` is set) every non-generic function is treated as a root regardless of reachability.
+"""
+id = "6e45ce7c-ed05-4b0a-8a0f-13f99524298f"

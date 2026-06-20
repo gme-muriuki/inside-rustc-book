@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Rust keeps `struct foo {}`, `fn foo() {}`, and `macro_rules! foo {…}` simultaneously without a collision. Why?"
+prompt.distractors = [
+    "The resolver disambiguates by file location: each definition lives in a different module under the hood.",
+    "Mangling: each `foo` is rewritten internally to a unique suffix like `foo$type`, `foo$value`, `foo$macro`.",
+    "It is actually an error; only one of the three compiles, and rustc picks the most recently defined one.",
+]
+answer.answer = "The resolver maintains three independent namespaces (type, value, macro). The use site's syntactic position picks which namespace to search, so the same spelling can name three different things at once."
+context = """
+§9.1 names the rule: rustc keeps three namespaces, modelled at the local-scope level as `PerNS<Vec<Rib>>` and at the module level by `BindingKey { ident, ns, disambiguator }`. A `foo(...)` in expression position searches the value namespace; `x: foo` in type position searches the type namespace; `foo!()` searches the macro namespace. The example only works with a *braced* struct because unit and tuple structs also enter the value namespace via their constructor.
+"""
+id = "2ae6eff7-9c8c-4784-bf19-56d00ef08249"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is rustc's name for one scope-frame, the small map from names introduced in that scope to their resolutions, plus a kind tag?"
+answer.answer = "Rib"
+answer.alternatives = ["rib", "Rib<'ra>", "Rib struct"]
+context = """
+A `Rib` is one frame of the scope stack: `pub bindings: FxIndexMap<Ident, R>` plus a `pub kind: RibKind<'ra>` (compiler/rustc_resolve/src/late.rs:293-297). The late visitor holds a `PerNS<Vec<Rib>>`, pushing a new rib every time the set of visible names potentially changes (block, function, let, module, macro boundary). Lookup walks `ribs.iter().rev()`, innermost first, with `bindings.get(&ident)` comparing both `Symbol` and `SyntaxContext`.
+"""
+id = "7cda4865-64e3-4908-9058-8425fa3426cb"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Macros force name resolution into two phases. What does the *late* phase (in `rustc_resolve::late`) gain from running after expansion has reached its fixpoint?"
+prompt.distractors = [
+    "It can parallelize across modules because items no longer share state.",
+    "It can skip resolving lifetimes and labels, since those are handled in HIR lowering.",
+    "It can switch from rib-based lookup to pure module-tree lookup, dropping per-namespace scope stacks.",
+]
+answer.answer = "Because no new names can be added once expansion has finished, each name only has to be resolved *once*. If a name fails to resolve in the late phase, it is simply a compile error."
+context = """
+The dev-guide quote in §9.1 is exact: in late resolution, we only need to try to resolve a name once, since no new names can be added. Early resolution must interleave with expansion (it resolves only imports and macro paths, just enough for expansion to proceed); late resolution walks the frozen AST once and resolves every expression, type, pattern, and path.
+"""
+id = "a904db7e-624d-4bb7-8434-8fa0e6ee93f8"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Late resolution writes its answers into which side table on the `Resolver`, keyed by the use's `NodeId`?"
+answer.answer = "partial_res_map"
+answer.alternatives = ["partial_res_map", "Resolver::partial_res_map", "the partial_res_map", "partial res map"]
+context = """
+`record_partial_res(node_id, PartialRes::new(res))` inserts the resolution into `partial_res_map: NodeMap<PartialRes>` (compiler/rustc_resolve/src/lib.rs:1200-1202). HIR lowering and type checking then read this map by the use's `NodeId` rather than re-walking any scopes. Imports get a parallel `import_res_map: NodeMap<PerNS<Option<Res>>>` because one import can resolve to different things in different namespaces.
+"""
+id = "54f8e3c5-7d47-4d56-9555-dfb885db4583"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In `fn f() { g(); let g = || {}; fn g() {} g(); }`, what does the *first* `g()` resolve to?"
+prompt.distractors = [
+    "A compile error: `g` is used before it is defined.",
+    "The closure bound to `let g = || {}`, because `let` shadowing applies from the start of the block.",
+    "An ambiguity error: both `fn g` and `let g` are in the same scope.",
+]
+answer.answer = "The function item `fn g`. Items are in scope across the entire block regardless of textual order; the local `let g` only shadows from its `let` onward, so the *second* `g()` resolves to the local."
+context = """
+§9.3's items-outrank-locals rule. The lab in §9.4 models it explicitly with a two-pass `resolve_block`: pass 1 defines items first (visible across the whole block), pass 2 walks statements in order so a `let` only shadows from its position onward. Crucially, a `let g = init` resolves `init` *before* binding `g`, so `let x = x + 1` sees the outer `x`.
+"""
+id = "44d5e9db-7e73-4f5c-ae55-339ffb02be43"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When the rib walk for a path's first segment resolves it to a local variable or type parameter, what does the resolver do with the remaining segments?"
+prompt.distractors = [
+    "Descends the `Module` tree from the local's defining module to resolve them.",
+    "Reports an error: locals cannot appear as the head of a multi-segment path.",
+    "Resolves them lazily on demand the first time someone reads `partial_res_map`.",
+]
+answer.answer = "It leaves them unresolved by returning a `PartialRes` whose `unresolved_segments = path.len() - 1`, deferring the trailing segments to type-relative resolution in `rustc_hir_analysis` (Chapter 11)."
+context = """
+§9.3 reads the verified `ident.rs` arm: `PathResult::NonModule(PartialRes::with_unresolved_segments(res, path.len() - 1))`. The reason is the §9.1 boundary: resolving `x.field` or `local::Assoc` needs the *type* of the local, which only type checking knows. `PartialRes { base_res, unresolved_segments }` lives at compiler/rustc_hir/src/def.rs:628-631.
+"""
+id = "a4f6174d-215a-4cab-b131-ed4105cf7544"

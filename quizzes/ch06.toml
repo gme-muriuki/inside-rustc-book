@@ -1,0 +1,85 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does `rustc` store a span's location as a byte offset into a single global `BytePos` space, rather than as a `(file, line, column)` triple on every AST/HIR/MIR node?"
+prompt.distractors = [
+    "Because line and column numbers are not stable across `cargo build` invocations.",
+    "Because `BytePos` is the only form `LLVM` accepts for debuginfo.",
+    "Because the global byte space makes spans portable across crates without re-encoding.",
+]
+answer.answer = "Because storing `(String, u32, u32)` on millions of nodes would be ruinous, and line/column require scanning the source for newlines; one `u32` offset is cheap to copy and the human form is computed lazily, only when a diagnostic is rendered."
+context = """
+Section 6.1 frames this as the chapter's first design decision: the only location you must store is a byte offset, and lazy conversion to file/line/col runs the few thousand times per compilation a diagnostic actually prints, not the billions of times a span is copied. Concatenating all files into one `u32` space also means the span needs no `file` field; the `SourceMap` recovers the file by binary-searching its file ranges.
+"""
+id = "63939d2c-def7-4a9c-81c8-a5847938418b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Name the four logical fields of `SpanData` (the unpacked, 16-byte view of a span)."
+answer.answer = "lo, hi, ctxt, parent"
+answer.alternatives = [
+    "lo hi ctxt parent",
+    "lo, hi, ctxt (SyntaxContext), parent (Option<LocalDefId>)",
+    "lo: BytePos, hi: BytePos, ctxt: SyntaxContext, parent: Option<LocalDefId>",
+    "lo and hi and ctxt and parent",
+]
+context = """
+Faithful from `compiler/rustc_span/src/lib.rs`: `pub struct SpanData { pub lo: BytePos, pub hi: BytePos, pub ctxt: SyntaxContext, pub parent: Option<LocalDefId> }`. `lo`/`hi` are the byte range, `ctxt` carries macro hygiene (Chapter 8), and `parent` is the storage-optimization anchor to the enclosing item (the same instinct as the two-level `HirId` of section 2.2).
+"""
+id = "ec2a263b-93d0-42bb-9c79-537568792ae4"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The packed 8-byte `Span` in `span_encoding.rs` keeps the common case inline and falls back to a global interner for the rest. According to the chapter, what fraction of spans fits inline in the 8-byte representation?"
+prompt.distractors = [
+    "About 50 percent: the interner is hit on roughly half of all spans.",
+    "About 80 to 90 percent: the same hit rate as the earlier 4-byte encoding.",
+    "100 percent: the interner exists only to support cross-crate spans, not in-tree overflow.",
+]
+answer.answer = "Over 99.9 percent: the inline encoding covers the overwhelming majority of spans, and interner hits are rare enough to be cheap but common enough that the code path stays exercised."
+context = """
+Section 6.1 reports that the earlier 4-byte encoding was actually slower because only 80 to 90 percent of spans fit inline (less in large crates) and the interner was hit far more often. Eight bytes is the measured sweet spot: 99.9 percent plus inline, rare interner traffic. This is the section 4.2 interning pattern, profiled into its exact size.
+"""
+id = "ecf27fe0-fcad-4744-941a-fe2f9f5731ac"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `std` method does `SourceFile::lookup_line` use to binary-search the precomputed line table for the line containing a given `BytePos`?"
+answer.answer = "partition_point"
+answer.alternatives = [
+    "Vec::partition_point",
+    "slice::partition_point",
+    "partition point",
+    ".partition_point()",
+]
+context = """
+The faithful body is one line: `self.lines().partition_point(|x| x <= &pos).checked_sub(1)`. `partition_point` returns how many elements satisfy a predicate; subtracting one gives the 0-based index of the line containing `pos`. The same method also drives `SourceMap::lookup_source_file_idx`, so a `BytePos` is resolved to file plus line by two `partition_point` searches.
+"""
+id = "61589ad3-06c2-43be-95cc-bdad83d7e32b"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What is the role of `ErrorGuaranteed` in `rustc_errors`, and what gives the type its soundness guarantee?"
+prompt.distractors = [
+    "It is a runtime counter incremented by every `.emit()` call; the compiler aborts if the counter is zero at the end of the run.",
+    "It is a marker trait implemented by every diagnostic struct; the `Drop` impl panics if no instance was emitted.",
+    "It is a stable error code (like `E0502`) attached to a `Diag` builder so downstream tools can route on it.",
+]
+answer.answer = "It is an opaque token whose only sanctioned constructor is emitting an error-level diagnostic, so a function returning `Result<T, ErrorGuaranteed>` is making a compile-time promise that its `Err` path actually told the user something."
+context = """
+`pub struct ErrorGuaranteed(());` lives in `compiler/rustc_span/src/lib.rs` with a private field, and the trait `EmissionGuarantee` ties the act of emitting to producing the token. The chapter calls this a receipt: an error was definitely emitted, so it is sound for the compiler to continue on degraded data. A deprecated `unchecked_error_guaranteed` back door exists for the few sanctioned sites that need to manufacture one (notably inside `DiagCtxtInner::emit_diagnostic`).
+"""
+id = "820d92f5-3bf0-4316-abb7-2621296da919"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In the in-tree marshalling layer that hands diagnostics to the external `annotate-snippets` crate, which two-variant tag carried on each `Annotation` chooses whether a source range gets `^` or `-` under it?"
+prompt.distractors = [
+    "A boolean `is_primary: bool` on the in-tree `Annotation` struct.",
+    "The `Level` of the parent diagnostic: error gets `^`, warning gets `-`.",
+    "The presence or absence of a label: labeled annotations get `^`, unlabeled get `-`.",
+]
+answer.answer = "`AnnotationKind`, with variants `Primary` (rendered as `^`) and `Context` (rendered as `-`). The renderer in `annotate-snippets` dispatches on this tag when drawing the underline row."
+context = """
+Section 6.3 walks the change: in 1.95 the human renderer lives in the external `annotate-snippets` crate driven by `AnnotateSnippetEmitter`. Each annotation is tagged `AnnotationKind::Primary` or `AnnotationKind::Context`, and the snippets are wrapped in a `Group` keyed by `Level` before `Renderer::render` draws the gutter, source line, and underline row.
+"""
+id = "5b571b6d-cd5f-4a95-bdc0-2a1b708a44d6"

@@ -1,0 +1,33 @@
+# mdBook build output
+book/
+
+# mdbook-pagetoc auto-generates these on first build; tracked separately
+# so a plugin upgrade does not surface a noisy diff. Uncomment if you'd
+# rather treat them as generated artifacts.
+# theme/pagetoc.css
+# theme/pagetoc.js
+
+# mdbook-quiz copies its runtime bundle into src/ on first build
+src/quiz/
+src/mdbook-quiz/
+
+# mdbook-admonish stdin capture file used only during shim debugging
+scripts/admonish-stdin.bin
+scripts/admonish-stdin.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Rust (in case anyone runs cargo here)
+target/
+Cargo.lock

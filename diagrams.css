@@ -1,0 +1,74 @@
+/* Diagram (Mermaid-rendered SVG) presentation.
+ *
+ * The mermaid-svg preprocessor (scripts/mermaid-to-svg.py) wraps every
+ * pre-rendered diagram as:
+ *     <figure class="mermaid-figure">
+ *       <object data="...svg" type="image/svg+xml">…</object>
+ *       <figcaption>Figure N.M: …</figcaption>
+ *     </figure>
+ *
+ * The generated SVGs carry only a viewBox (width="100%", no height), so a tall
+ * `flowchart TD` would otherwise render at full intrinsic height and swallow the
+ * whole viewport. The rules below cap height, preserve aspect ratio, center the
+ * figure, and give the caption a quiet, professional treatment. */
+
+.mermaid-figure {
+  /* breathing room above/below; horizontally centered block */
+  margin: 1.75rem auto;
+  text-align: center;
+}
+
+.mermaid-figure object,
+.mermaid-figure svg,
+.mermaid-figure img {
+  display: block;
+  margin: 0 auto;
+  /* The SVGs are rendered with useMaxWidth:false, so they carry their real
+   * pixel width/height. Diagrams therefore render at their natural (medium)
+   * size and only ever scale DOWN to satisfy the caps below, never up to fill
+   * the column. This keeps them sized like embedded figures that flow with the
+   * prose, instead of full-width images that interrupt reading. */
+  max-width: 100%;        /* scale down only if wider than the text column */
+  max-height: 50vh;       /* and never taller than half the viewport */
+  width: auto;
+  height: auto;
+  /* The diagrams are drawn in dark ink (#1a1a1a strokes/arrowheads) on a
+   * transparent background. On the dark (ayu) theme those arrows vanish against
+   * the page, leaving disconnected blocks. Sit every diagram on its own light
+   * "paper" card so the ink is visible in BOTH themes (the diagrams were
+   * designed for a light background), and it reads as a deliberate figure. */
+  background: #fbf7f0;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+}
+
+.mermaid-figure figcaption {
+  margin-top: 0.65rem;
+  font-size: 0.85em;
+  font-style: italic;
+  line-height: 1.35;
+  /* mdBook exposes theme-aware vars; fall back to a muted gray */
+  color: var(--sidebar-non-existant, #8a8a8a);
+  opacity: 0.85;
+  text-align: center;
+}
+
+/* On wide screens, keep very wide diagrams from stretching edge to edge and
+ * becoming a thin band; cap the figure width so they stay readable. */
+@media (min-width: 1100px) {
+  .mermaid-figure {
+    max-width: 900px;
+  }
+}
+
+/* Print / PDF: drop the viewport cap (no viewport when printing) and let the
+ * browser fit diagrams to the page width. */
+@media print {
+  .mermaid-figure object,
+  .mermaid-figure svg,
+  .mermaid-figure img {
+    max-height: none;
+  }
+}

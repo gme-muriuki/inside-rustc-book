@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is a file-timestamp model (the way `make` decides what to rebuild) too coarse for `rustc`'s incremental compilation?"
+prompt.distractors = [
+    "Because `rustc` compiles too quickly for timestamps to be reliable.",
+    "Because Rust source files have multiple timestamps in their headers that conflict.",
+    "Because timestamps are not portable between operating systems.",
+]
+answer.answer = "Because timestamps only know that *a file changed*, not *what* about it changed; editing a comment or reformatting whitespace would invalidate every dependent of that file even though nothing semantically relevant moved."
+context = """
+The goal is to invalidate at the granularity of individual computed facts and to stop invalidation the moment a changed input turns out not to affect a result. A file-level model cannot do that. The query system invalidates per query result, and the red-green algorithm's early cutoff lets a re-run that produces the same fingerprint still spare its dependents, exactly the precision a timestamp model lacks.
+"""
+id = "2fd558db-0c71-4ab2-9b69-cce4593046d1"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In `rustc`'s incremental compilation, what does it mean for a `DepNode` to be marked **green**?"
+prompt.distractors = [
+    "The query has already been re-run this session and is being skipped on subsequent calls.",
+    "The query's input file has a newer timestamp than its output.",
+    "The query has been deserialized from the on-disk cache and is awaiting execution.",
+]
+answer.answer = "It is known unchanged from last session: either it is an input whose fingerprint still matches, or it is a derived query all of whose dependencies are green; its cached result can be reused without re-running the query."
+context = """
+A node is **red** if it changed, an input whose fingerprint differs, or a derived query that had to be re-run and produced a different result. The crucial case is **early cutoff**: when a re-run yields the same fingerprint as the saved one, the node marks green after all, and *its* dependents can still be spared.
+"""
+id = "e965430e-6dd7-4d63-92f7-4809b9595fce"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which two graphs does `DepGraphData` hold side by side, one being built this session and one loaded from last session?"
+answer.answer = "current and previous"
+answer.alternatives = ["current, previous", "current/previous", "CurrentDepGraph and SerializedDepGraph", "current and previous graphs"]
+context = """
+`DepGraphData` carries `current: CurrentDepGraph` (the graph being built this session, append-only and memory-frugal) and `previous: Arc<SerializedDepGraph>` (last session's immutable graph loaded from disk), bridged by a `colors: DepNodeColorMap`. The two are kept separate: `previous` is queried to decide reuse, `current` is freshly built.
+"""
+id = "9c9ec098-9cb6-466f-b212-4aaddf795f4c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Inside `with_task`, how does a dependency edge from a running query to one of its reads end up in the graph?"
+prompt.distractors = [
+    "The query author calls `dep_graph.record_edge(self, dep)` explicitly inside the query body.",
+    "A static analysis pass over the query source code extracts all calls and emits the edges at compile time.",
+    "An attribute macro on each query parses the function body and inserts edge-recording calls automatically.",
+]
+answer.answer = "The task runs inside a `TaskDepsRef::Allow(&task_deps)` context, and any tracked read performed during the task goes through `read_deps`, which pushes the read into `task_deps.reads`; on return, those reads are harvested as the node's edges."
+context = """
+There is no explicit `record_dependency` call anywhere in query code. Edges materialize as a side effect of running the task inside a collecting context, and `task_fn` is a `fn` pointer (not a closure) precisely so the engine has tight control over what state the task can access. That is the load-bearing invariant: a read cannot be forgotten, only bypassed.
+"""
+id = "6b445b04-c3d7-4487-881d-7e48e745847f"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What query modifier marks a query that re-executes unconditionally during incremental compilation and is not even tried as green?"
+answer.answer = "eval_always"
+answer.alternatives = ["eval always", "#[rustc_eval_always]", "EvalAlways", "TaskDepsRef::EvalAlways"]
+context = """
+`eval_always` queries are re-run on every session and the engine does not even try to mark their dep-node green. Two reasons: some queries read external inputs (files, global state, the source) whose change the dep graph cannot otherwise see; and some depend on essentially the whole crate, so trying to mark them green would never succeed. `with_task` installs `TaskDepsRef::EvalAlways` for such queries, skipping edge recording entirely.
+"""
+id = "eadc47e1-dbba-4cb2-aa3c-3f644eb5e17a"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "If `typeck(foo)` emitted a warning last session and this session is marked green and therefore not re-run, what happens to that warning?"
+prompt.distractors = [
+    "The warning is lost; you must do `cargo clean` to see warnings on every build.",
+    "The warning is re-derived by running a separate `lint_only` pass over the cached result.",
+    "The warning is regenerated by running the query body in a special dry-run mode that skips computation.",
+]
+answer.answer = "The warning is replayed from a saved `QuerySideEffect` (specifically `QuerySideEffect::Diagnostic`) that was persisted alongside the query result, so the diagnostic re-emerges without the query body running."
+context = """
+Side effects (most importantly emitted diagnostics) are saved to disk along with the query result and loaded back when the query is marked green. This is why an incremental build still shows the same warnings as a clean build even though it skipped the work that generated them: the *effects* were cached alongside the *result*. Any side effect not captured by `QuerySideEffect` would silently disappear on a green rebuild, which is why queries are designed to be pure.
+"""
+id = "bebbe1c5-731e-486d-9eb7-317fad5d3ae0"

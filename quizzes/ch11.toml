@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The chapter says type checking is where rustc \"turns from translator to prover.\" Which `TyKind` variant is the representational hook that makes inference itself possible?"
+prompt.distractors = [
+    "`Adt(AdtDef, GenericArgs)`, because every nominal type carries its generic arguments.",
+    "`Param(ParamTy)`, because a generic parameter is the canonical \"unknown\" type.",
+    "`Alias(AliasTy)`, because projections defer resolution.",
+]
+answer.answer = "`Infer(InferTy)`, an explicit \"not yet known\" type variant that the unifier later fills in."
+context = """
+§11.1 walks the `TyKind` enum and stops on `Infer(InferTy)` as the inference hole. `Param` is a known generic parameter (it has a name, a position, and a `ParamEnv`); `Alias` is a known projection; `Adt` is fully concrete given its args. Only `Infer` represents "I do not know yet, call it ?T," which is what the union-find tables in `InferCtxt` resolve over the course of typeck.
+"""
+id = "a5dd45f8-41fc-4052-af52-6bb66cc79010"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "The chapter names the classic algorithm rustc's inference is based on, two-word answer (a pair of surnames)."
+answer.answer = "Hindley-Milner"
+answer.alternatives = ["Hindley Milner", "hindley-milner", "hindley milner", "HM", "Hindley-Milner type inference"]
+context = """
+§11.1 quotes the dev-guide directly: rustc's inference "is based on the standard Hindley-Milner type inference algorithm," extended for subtyping, regions, and higher-ranked types. The two phases are constrain (introduce a `?T` for every unknown and walk the program collecting equations) and solve (unify, binding variables in a union-find table or reporting a clash).
+"""
+id = "6d1679fc-dd0e-4624-a74a-949d33a16861"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "An integer literal like `5` in `let x = 5;` gets a fresh integral inference variable. What does rustc do with that variable if no later constraint pins it down before the body finishes?"
+prompt.distractors = [
+    "Emits E0282 (`type annotations needed`); rustc refuses to choose a default integer type.",
+    "Defaults it to `usize`, matching the platform pointer width.",
+    "Defaults it to the smallest type the literal value fits in (here `u8`).",
+]
+answer.answer = "Falls back to `i32`. An unconstrained floating-point variable analogously falls back to `f64`."
+context = """
+§11.1 explains the literal-fallback variables that Rust adds on top of pure HM. Integral variables live in `int_unification_storage`, float variables in `float_unification_storage`, and unconstrained ones default to `i32` and `f64` respectively. The point of these specialized variables is exactly to let untyped integer literals stay flexible until context decides, then fall back rather than error.
+"""
+id = "42ea852d-f89f-4a4f-8faf-ca357f581bb9"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What writeback function (the one the chapter and the rustc source both name) walks a body at the end of typeck and replaces every inference variable with its solved concrete type, producing `TypeckResults`?"
+answer.answer = "resolve_type_vars_in_body"
+answer.alternatives = ["resolve_type_vars_in_body", "FnCtxt::resolve_type_vars_in_body", "writeback::resolve_type_vars_in_body"]
+context = """
+§11.1 and §11.2 both name `resolve_type_vars_in_body` as the writeback entry point. It is on `FnCtxt`, lives in `compiler/rustc_hir_typeck/src/writeback.rs`, and returns `&'tcx TypeckResults<'tcx>`. Its job: walk the body once, call `resolve_vars_if_possible` on every node's type (union-find find), and write the inference-variable-free result into the `HirId`-keyed `TypeckResults` side table. After it runs, the `InferCtxt` (variables, tables, undo log, all of it) is discarded.
+"""
+id = "a7c745bc-53cc-48f4-bb74-54a4f430ab8b"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What does `infcx.at(cause, param_env).eq(a, b)` return, and why does that return type matter for the connection to Chapter 12?"
+prompt.distractors = [
+    "It returns `Result<(), TypeError>`; the connection to Chapter 12 is purely through the `ParamEnv` argument.",
+    "It returns `bool`; trait obligations are inserted into a global mutable queue as a side effect.",
+    "It returns `Ty<'tcx>` (the unified type); obligations are gathered by a separate `collect_obligations` pass after the walk.",
+]
+answer.answer = "It returns `InferOk<()>`, whose `obligations` field carries the trait obligations the equality implied; the caller must enrol those in a fulfillment context, and that handoff is the seam to the trait solver of Chapter 12."
+context = """
+§11.2 stresses that `eq` does not really return `()`: it returns `InferOk<()>` and the `InferOk` carries extra `PredicateObligation`s. Unifying `?T` with `Vec<U>` where a bound says `U: Clone` produces the obligation `U: Clone`. Unification's job is the equality; fulfilling the resulting obligations is the trait solver's job. This one fact (unification produces obligations as a byproduct) is the seam between Chapter 11 (inference) and Chapter 12 (trait solving).
+"""
+id = "124f2a83-6830-4088-bd4c-6b56b08e657f"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does rustc split body type-checking between `FnCtxt` and `ItemCtxt` (item-signature checking)?"
+prompt.distractors = [
+    "Performance only: `ItemCtxt` is a fast path that skips the borrow checker.",
+    "Historical: `ItemCtxt` predates `FnCtxt` and is kept for backwards compatibility.",
+    "Parallelism: `ItemCtxt` runs in a separate thread pool so signatures and bodies can be checked concurrently.",
+]
+answer.answer = "`FnCtxt` type-checks bodies *with* inference (it owns an `InferCtxt`); `ItemCtxt` checks item *signatures* and deliberately does *no* inference, because a signature like `fn f(x: u32) -> bool` has no holes to fill. This is the §10.2 body/signature split: signatures must be fully annotated so each body can be checked in isolation."
+context = """
+§11.1 and §11.2 both lean on this split. The verified `FnCtxt` doc-comment says it stores type-checking context for bodies "including performing type inference with `InferCtxt`"; the verified `ItemCtxt` doc-comment says "`ItemCtxt` does no inference, it has no `InferCtxt`, while `FnCtxt` does do inference." The whole reason inference is intra-body only is that signatures form the contract: each body is checked using just its callees' signatures, never their bodies.
+"""
+id = "d7cd5d1a-777c-482b-9bc5-5f430fefd827"

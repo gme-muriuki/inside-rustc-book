@@ -1,0 +1,87 @@
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In `rustc` source, the lifetime `'tcx` is the name of what?"
+answer.answer = "the arena"
+answer.alternatives = [
+    "the compilation arena",
+    "the compilation region",
+    "the lifetime of the arena",
+    "GlobalCtxt's arena",
+    "the region of the compilation",
+]
+context = """
+`'tcx` is simply the lifetime of the one `Arena<'tcx>` owned by `GlobalCtxt`. Every `Ty<'tcx>`, `&'tcx Body<'tcx>`, and `TyCtxt<'tcx>` is borrowing that one region, which lives for the whole compilation and is freed all at once when `GlobalCtxt` drops. Rust's borrow checker is what guarantees no arena pointer escapes.
+"""
+id = "d2daa016-fb64-43af-a4a5-6d2adfba49f8"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What distinguishes `TypedArena<T>` from `DroplessArena` in `rustc_arena`?"
+prompt.distractors = [
+    "`TypedArena` is thread-safe; `DroplessArena` is single-threaded.",
+    "`TypedArena` bumps upward; `DroplessArena` bumps downward.",
+    "`TypedArena` lives in `rustc_middle`; `DroplessArena` lives in `rustc_arena`.",
+]
+answer.answer = "`TypedArena<T>` runs `T`'s destructor on each object when the arena drops, so it holds one type at a time; `DroplessArena` holds many types but only ones that satisfy `!mem::needs_drop`, and runs no destructors at all."
+context = """
+The split is about destructors. A MIR `Body<'tcx>` owns `Vec`s whose `drop` must run, so it goes in a `TypedArena<Body<'tcx>>`. Interned `TyKind`s, slices of `GenericArg`, and other `Copy`-ish data go in the shared `DroplessArena`. `declare_arena!` weaves one dropless arena plus one typed arena per droppable type into the `Arena<'tcx>` that `GlobalCtxt` owns.
+"""
+id = "c392cb10-466b-4319-a3fc-bd1f9ae32db1"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does the dedup set inside `CtxtInterners` use `InternedInSet<'tcx, T>` rather than the public `Interned<'tcx, T>` directly?"
+prompt.distractors = [
+    "`InternedInSet` is `Send + Sync`; `Interned` is not.",
+    "`InternedInSet` stores its inner value inline; `Interned` stores it behind a pointer.",
+    "`InternedInSet` is used during incremental loading; `Interned` is used at runtime.",
+]
+answer.answer = "`InternedInSet`'s `PartialEq`/`Hash` go by contents (structural), so the set can recognize duplicates; the public `Interned` and `Ty` go by pointer (address), so every subsequent equality check is O(1). One allocation, two notions of equality, used at different layers."
+context = """
+The structural view is used exactly once, at insertion, to establish canonicity. The pointer view is used billions of times thereafter. The same `&'tcx WithCachedTypeInfo<...>` allocation is wrapped in `InternedInSet` for the dedup set's purposes and in `Interned`/`Ty` for everyone else.
+"""
+id = "cdd34995-f0c2-41ed-a760-e80b474ec639"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Direction-wise, does `DroplessArena::alloc_raw` bump its cursor up (toward higher addresses) or down (toward lower addresses) within a chunk?"
+answer.answer = "down"
+answer.alternatives = [
+    "downward",
+    "downwards",
+    "bumps down",
+    "bumps downward",
+    "subtracts from end",
+]
+context = """
+`alloc_raw` subtracts the requested size from the `end` cursor and aligns down. Bumping downward shaves a couple of instructions off the hot path: aligning downward is one `AND` instruction, whereas aligning an upward-growing cursor needs add-then-mask. The trick is documented in Nick Fitzgerald's post Always Bump Downwards.
+"""
+id = "12735f8c-b59c-490d-b7a1-729c517d4ba2"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Pointer equality `ty_a == ty_b` on two `Ty<'tcx>` values returns true. What can you correctly conclude?"
+prompt.distractors = [
+    "The two values denote the same Rust type, semantically.",
+    "Neither value contains any inference variables.",
+    "The two values were constructed through the same call site.",
+]
+answer.answer = "Only that they are the same interned representation (the same canonical pointer), which is identity, not semantic type equality. Inference variables, type aliases, and un-normalized projections can make two semantically equal types occupy distinct interned nodes."
+context = """
+The dev-guide is explicit about this: `==` on `Ty` is for identity, not semantics. Semantic type equality requires the inference and relation machinery (unification, normalization), covered in Chapter 11. Mistaking pointer equality for semantic equality has shipped real unsoundness in `rustc`.
+"""
+id = "4b95492a-7d29-48cf-a59c-9569d47c74f8"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Within a chunk, `DroplessArena` grows new chunks following what policy?"
+prompt.distractors = [
+    "Every new chunk is a fixed 64 KiB regardless of demand.",
+    "Each new chunk halves the previous one, with a floor of 4 KiB.",
+    "Chunks are sized exactly to fit the next allocation, no doubling.",
+]
+answer.answer = "The first chunk starts at `PAGE` (4 KiB) and each subsequent chunk doubles in size, capped at `HUGE_PAGE` (2 MiB). Old chunks are kept in the `chunks` vector and freed only in bulk when the arena drops."
+context = """
+`PAGE: usize = 4096` and `HUGE_PAGE: usize = 2 * 1024 * 1024` live in `compiler/rustc_arena/src/lib.rs`. The doubling-with-cap policy ensures a barely-used arena cannot strand a giant chunk while a long-lived one amortizes allocation cost across many small requests.
+"""
+id = "211a6ae6-65bd-44b9-b59f-1ca46d3afd20"

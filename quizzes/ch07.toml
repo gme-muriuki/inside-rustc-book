@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 7 says `rustc` writes its parser by hand in `rustc_parse` (rather than using a generator like LALRPOP or bison). Which is named as the *primary* reason for that choice?"
+prompt.distractors = [
+    "Hand-written parsers are always faster than table-driven ones.",
+    "LALR parser generators cannot express any of Rust's grammar.",
+    "It avoids a build-time dependency on a procedural macro.",
+]
+answer.answer = "Diagnostics: a hand-written parser can know what construct it was in the middle of when an unexpected token appears, guess what the user meant, recover, and keep parsing to report more errors in one run."
+context = """
+§7.1 lists three forces: diagnostics, context-sensitivity (the `<` and `>>` corners of §5.2), and control/continuity. Diagnostics is called out as "the first and most important." The whole `Parser` struct (most of its 20 fields) exists in service of failing well, as §7.2 confirms when it counts the fields by category.
+"""
+id = "3bb495ed-ec6b-4bfa-a610-affe50b1ba64"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What placeholder identity does `mk_expr` stamp onto a freshly built AST node, before a later pass assigns the real `NodeId`?"
+answer.answer = "DUMMY_NODE_ID"
+answer.alternatives = ["dummy_node_id", "DUMMY_NODE_ID", "dummy node id", "DummyNodeId"]
+context = """
+`mk_expr` in `compiler/rustc_parse/src/parser/expr.rs` builds an `Expr` with `id: DUMMY_NODE_ID`. The parser cares about *shape*, not identity; real `NodeId`s are stamped on in a later pass once the full AST exists. The first rung of §2.2's identity ladder is `NodeId`; `DUMMY_NODE_ID` is the parser's placeholder before that rung is filled in.
+"""
+id = "61007253-276f-4851-9fc7-d04cb34621a4"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The parser consumes a `TokenStream`, not a flat `Vec<Token>`. Which of these is the structural reason §7.2 gives for that choice?"
+prompt.distractors = [
+    "It lets the parser run on multiple threads at once.",
+    "It avoids allocating a `Vec` for the tokens.",
+    "It is required so that incremental compilation can hash sub-streams.",
+]
+answer.answer = "Matched pairs of brackets are pre-grouped into `TokenTree::Delimited` subtrees by a pre-pass, so the parser never has to worry about unbalanced parentheses and macros receive tidy delimited groups."
+context = """
+`TokenStream` is `Arc<Vec<TokenTree>>`, and `TokenTree::Delimited` wraps a complete inner stream for each `()`, `[]`, or `{}` pair. That pre-pass catches "unclosed bracket" with a far better message because it knows exactly where the opener was, and it is what makes macros (which operate on `TokenStream`s) tractable.
+"""
+id = "7d256ec8-5bc9-4d94-8a02-ce78b68abe4b"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which method on `Parser` only *peeks* at the current token (and records what it was hoping for into `expected_token_types`), without advancing the reading head?"
+answer.answer = "check"
+answer.alternatives = ["check()", "Parser::check", "self.check"]
+context = """
+The driver vocabulary is `bump` (advance), `check` (peek + record expectation), `eat` (peek + bump if matched), `expect` (demand or error), and `look_ahead` (peek further). Confusing `eat` with `check` is the single most common parser bug (the §7.2 Warning admonition). `check`'s side effect of inserting into `expected_token_types` is what powers the famous "expected one of ..., found ..." messages later.
+"""
+id = "ba4307b1-9d7e-41b0-beb4-ec77dd0a62d5"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In `parse_expr_assoc_rest_with`, after consuming a left-associative operator at precedence `prec`, what floor does the recursion for the right-hand operand use?"
+prompt.distractors = [
+    "`Bound::Included(prec)`, so an equal-precedence operator on the right also folds in.",
+    "`Bound::Unbounded`, so the right side parses any operator regardless of precedence.",
+    "`Bound::Excluded(prec - 1)`, so anything at or above `prec - 1` keeps folding.",
+]
+answer.answer = "`Bound::Excluded(prec)`, so equal-precedence operators do NOT re-bind to the right and `a - b - c` parses as `(a - b) - c`."
+context = """
+§7.3 shows the `match op.fixity()` arm: `Fixity::Left | Fixity::None` recurse with `Bound::Excluded(prec)`, `Fixity::Right` with `Bound::Included(prec)`. The strictness of `Excluded` is precisely left-associativity. Right-associative operators (assignment `=`) use `Included` so an equal-precedence operator on the right folds in, giving `a = (b = c)`.
+"""
+id = "b615e783-d2f6-4d34-bc07-8cf0c1103b9a"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When the lab parser handles `2 ^ 3 ^ 2` with right-associative `^`, the binding-power table assigns `(l_bp, r_bp) = (8, 7)`. Why is the right binding power *smaller* than the left?"
+prompt.distractors = [
+    "Smaller numbers always mean tighter precedence in Pratt parsers.",
+    "It is a typo; both should be 8 for right-associative operators.",
+    "Because `^` in Rust is bitwise XOR, not exponentiation, so the convention is reversed.",
+]
+answer.answer = "After consuming `^` the loop recurses with floor `7`; a second `^` whose `l_bp` is `8` passes the `l_bp < min_bp` test and folds into the right side, producing `a ^ (b ^ c)`. Swapping the asymmetry encodes right-associativity."
+context = """
+For a left-associative operator like `-` the pair is `(1, 2)`: after consuming `-` we recurse with floor `2`, so a second `-` (whose `l_bp` is `1`) fails the test and is left for the outer loop, giving `(a - b) - c`. The single swap from `left < right` to `left > right` is the entire difference between left and right associativity, the numeric form of rustc's `Excluded`/`Included` choice.
+"""
+id = "68fa2044-274c-431a-ba1f-85553ced70b6"

@@ -1,0 +1,69 @@
+[book]
+title = "Inside rustc: A Tour of the Rust Compiler"
+description = "A working tour of rustc, the prover that becomes a translator, from the first byte of source to a merged contribution."
+authors = ["James Muriuki Maina"]
+language = "en"
+text-direction = "ltr"
+src = "src"
+
+[output.html]
+default-theme = "ayu"
+preferred-dark-theme = "ayu"
+no-section-label = false
+mathjax-support = false
+# TODO: fill in once the book is hosted on GitHub. mdBook auto-renders an
+# "edit this page" pencil icon on every page when this is set.
+git-repository-url = ""
+# Optional GitHub edit URL template (uncomment after setting git-repository-url):
+# edit-url-template = "https://github.com/<owner>/<repo>/edit/main/{path}"
+additional-css = ["./mdbook-admonish.css", "./diagrams.css", "./theme/pagetoc.css", "./theme/pagetoc-tweaks.css", "./theme/quiz-tweaks.css", "./theme/highlight-tweaks.css", "./theme/reader-enhancements.css"]
+additional-js = ["./theme/pagetoc.js", "./theme/glossary-tooltip.js", "./theme/diagram-zoom.js", "./theme/reading-time.js", "./theme/quiz-progress.js"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+
+# Print-friendly single-page output. Generates book/print.html alongside the
+# normal chapter pages; readers open it and use the browser's "Save as PDF"
+# (or Print) to get an offline copy. Zero external dependencies.
+[output.html.print]
+enable = true
+page-break = true
+
+# Mermaid diagrams (181 across the book) are PRE-RENDERED to static SVGs in
+# src/images/diagrams/ by scripts/render-mermaid.py. The preprocessor below
+# rewrites each ```mermaid``` block to an <img> reference at build time, so
+# HTML / PDF / EPUB all consume the same SVGs (no client-side JS dependency).
+# When a diagram changes: edit the source ```mermaid``` block, then re-run
+#   python scripts/render-mermaid.py <changed-chapter.md> --force \
+#     --config scripts/mmdc-themed.json \
+#     --substitute "#1f6feb22=#CE422B22" --substitute "#1f6feb=#CE422B"
+[preprocessor.mermaid-svg]
+command = "python scripts/mermaid-to-svg.py"
+
+[preprocessor.admonish]
+# mdbook 0.5 renamed Book.sections -> Book.items, but mdbook-admonish 1.20
+# (the latest) still expects the old 'sections' key. The shim renames the
+# field before piping to admonish. Drop this once admonish releases support.
+command = "python scripts/admonish-wrap.py"
+assets_version = "3.1.0" # do not edit: managed by `mdbook-admonish install`
+on_failure = "bail"
+
+# Interactive quizzes (Brown University's mdbook-quiz). Each chapter's
+# end-of-chapter "Test yourself" block references a TOML file in quizzes/
+# via the {{#quiz ../../quizzes/chNN.toml}} directive.
+[preprocessor.quiz]
+command = "mdbook-quiz"
+# fullscreen = true   # uncomment for distraction-free quiz mode
+# Persist reader's answers in localStorage so progress survives reload.
+# The quiz-progress.js badge in the menu bar reads these keys to count
+# completed chapter quizzes.
+cache-answers = true
+
+# Per-page sidebar table of contents (right-rail navigation within a chapter).
+# Auto-generates theme/pagetoc.css and theme/pagetoc.js on first build; both
+# are wired into [output.html] additional-css / additional-js above.
+[preprocessor.pagetoc]

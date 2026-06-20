@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does `rustc` ship `rustc_codegen_cranelift` alongside the LLVM backend? Pick the answer that captures cg_clif's actual design goal."
+prompt.distractors = [
+    "Cranelift produces faster *runtime* code than LLVM, especially for numeric loops, so release builds get a measurable speedup.",
+    "Cranelift adds inline assembly and SIMD features that LLVM does not yet support on Rust's tier-1 platforms.",
+    "Cranelift is the only backend that can target architectures LLVM lacks a backend for, such as embedded GCC-only chips.",
+]
+answer.answer = "Cranelift trades runtime speed for fast codegen, so it shortens the edit-compile-test loop for debug builds; LLVM still ships release binaries."
+context = """
+LLVM is designed to produce fast binaries, not to produce binaries fast. Cranelift was born inside wasmtime (a WebAssembly JIT) where codegen latency matters, so its priority is generate-acceptable-code-quickly. cg_clif is therefore scoped to `[profile.dev]` and stays a nightly preview; release builds keep going through LLVM. Target coverage is the *GCC* backend's job, not Cranelift's.
+"""
+id = "2ccd844e-6bf2-4390-ab67-6a6fb8855646"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the name of the no-mangle Rust-ABI function that a codegen backend dylib must export so `rustc` can load it via `-Zcodegen-backend`?"
+answer.answer = "__rustc_codegen_backend"
+answer.alternatives = ["rustc_codegen_backend", "`__rustc_codegen_backend`"]
+context = """
+The plug-in contract lives in `compiler/rustc_interface/src/util.rs`. A backend is a `dylib` exporting `#[unsafe(no_mangle)] pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend>` (plain Rust ABI, not `extern "C"`, so the backend and `rustc` must share an `rustc_driver` version). `rustc` resolves the symbol with `load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend")` and drives the returned trait object through `codegen_crate`, `join_codegen`, and `link`.
+"""
+id = "ddec3fea-c8f4-40e2-86a0-fa6ce245b0f1"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "`rustc_codegen_ssa` exposes two seams for a backend. Which dispatch strategy does each use, and why?"
+prompt.distractors = [
+    "Both seams use generics: dynamic dispatch is forbidden inside the compiler for performance reasons.",
+    "Both seams use trait objects: `rustc` favors flexibility over raw speed everywhere.",
+    "`CodegenBackend` uses generics (called per CGU); `BuilderMethods` uses `dyn` because it must hide its `Value` type behind FFI.",
+]
+answer.answer = "`CodegenBackend` is a `dyn` trait object (rare calls, runtime-loadable dylib); `BuilderMethods` is a generic bound (millions of calls per compilation, monomorphized to direct, inlinable calls)."
+context = """
+The split is deliberate: dynamic dispatch lives where calls are rare and flexibility matters (loading a backend from a dylib selected at runtime by `-Zcodegen-backend`); static dispatch lives in the hot loop where a virtual call per emitted instruction would seriously slow the compiler. `BuilderMethods` keeps an associated `Value` type precisely so it is *not* dyn-safe, which forces monomorphization.
+"""
+id = "19dc9f98-c95f-4686-8aa6-e13ada29e0cc"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "How does cg_clif lower MIR's `BinOp::Add` on integers, and how does that differ from LLVM's version?"
+prompt.distractors = [
+    "cg_clif calls `unsafe { libgccjit_add(...) }` across FFI, the same shape as LLVM, only the library changes.",
+    "cg_clif implements `BuilderMethods::add` and calls `LLVMBuildAdd` through a thin Rust shim, so the leaf code is shared with LLVM.",
+    "cg_clif emits a textual Cranelift IR string and then re-parses it, which is why its codegen is slower than LLVM.",
+]
+answer.answer = "cg_clif dispatches through the free function `codegen_int_binop` in `src/num.rs`, which calls `fx.bcx.ins().iadd(lhs, rhs)`, a safe Rust method on Cranelift's `FunctionBuilder` with no FFI and no `unsafe`. LLVM's version is `unsafe { LLVMBuildAdd(...) }` crossing FFI into C++."
+context = """
+Because Cranelift is itself a Rust library (built by the Bytecode Alliance for wasmtime), cg_clif talks to it in-process without FFI. The values it manipulates are Cranelift's own `Value` type (a plain Rust handle), contrasting with LLVM's `&'ll Value` FFI pointer. cg_clif also does *not* implement `BuilderMethods` at all; the dispatch goes through plain functions taking `fx: &mut FunctionCx`.
+"""
+id = "e0bbeaef-431b-4252-a47f-9cee200bb248"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which of the three backends discussed in Chapter 20 does NOT implement `rustc_codegen_ssa`'s `BuilderMethods` hot-loop trait and instead writes its own per-function MIR walk?"
+answer.answer = "Cranelift"
+answer.alternatives = ["cg_clif", "rustc_codegen_cranelift", "the Cranelift backend"]
+context = """
+LLVM and GCC both implement `BuilderMethods` and are driven by the shared `rustc_codegen_ssa` walk (`codegen_mir`, `FunctionCx`, `codegen_statement`, `codegen_terminator`). cg_clif reuses the top seam (`CodegenBackend`), monomorphization collection, and driver scaffolding, but writes its own `codegen_fn`/`FunctionCx` in `compiler/rustc_codegen_cranelift/src/base.rs` because the shared core is still LLVM-shaped enough that bending it to Cranelift's JIT-derived model was harder than rolling its own walk.
+"""
+id = "92404fa0-bceb-4845-b360-d85a3ed76b23"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When you pass `-Zcodegen-backend=cranelift` to `rustc`, how does the compiler locate the actual backend code?"
+prompt.distractors = [
+    "It looks up `cranelift` in a hardcoded `match` arm that statically links cg_clif into `rustc` itself.",
+    "It downloads the latest `rustc-codegen-cranelift-preview` component from `static.rust-lang.org` on demand.",
+    "It treats `cranelift` as a path and tries to `dlopen` a file literally named `cranelift` in the current working directory.",
+]
+answer.answer = "Because the argument contains no `.`, `rustc` scans the sysroot's `codegen-backends/` directory for `rustc_codegen_cranelift-<CFG_RELEASE>` (then `rustc_codegen_cranelift`) with the platform's `lib`/`.so`/`.dll`/`.dylib` decoration, then `dlopen`s it and resolves `__rustc_codegen_backend`."
+context = """
+The dispatch in `compiler/rustc_interface/src/util.rs` switches on whether the argument contains a `.`: a path goes to `load_backend_from_dylib`, a bare name goes to `get_codegen_sysroot`. Only `dummy` and (gated on the `llvm` feature) `llvm` are compiled into `rustc` itself; `cranelift` and `gcc` resolve through the sysroot scan, not an allowlist.
+"""
+id = "7bb67430-4004-4897-8e75-db51a8339cf1"

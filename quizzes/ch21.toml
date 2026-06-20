@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which sentence best describes `rustc`'s relationship to linking?"
+prompt.distractors = [
+    "`rustc` implements its own linker in `rustc_codegen_ssa::back::link` and never depends on an external tool.",
+    "`rustc` calls into LLVM's `lld` library directly, bypassing any external linker process.",
+    "`rustc` writes a linker script and asks the user's build system to run the actual linker.",
+]
+answer.answer = "`rustc` does not implement linking. It assembles a command line via `rustc_codegen_ssa::back::link` and the `Linker` trait, then runs an external linker (`cc` -> `ld`, or `lld`/`mold`) as a subprocess."
+context = """
+The verified `back::link` module performs the linkage portion of the compilation phase, but its `link_natively` ultimately spawns an external linker subprocess. The `Linker` trait abstracts each linker's flag dialect (`GccLinker`, `MsvcLinker`, and so on), the same dyn-top-seam pattern used for the codegen backends.
+"""
+id = "1e5b9603-e26d-4c28-a297-7bc3d758402d"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the name of Rust's own structural, demanglable symbol-mangling scheme, introduced by RFC 2603?"
+answer.answer = "v0"
+answer.alternatives = ["v0 mangling", "Rust v0", "rust-v0", "symbol mangling v0"]
+context = """
+RFC 2603 defines Rust's v0 mangling scheme. It encodes the full path and generic arguments structurally so symbols round-trip to readable, demanglable Rust paths, in contrast to the legacy C++-derived scheme which baked in compiler-internal hashes. The `-Csymbol-mangling-version` flag selects between them.
+"""
+id = "5c298a8d-38ff-4fc3-be8e-f24819bb5700"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In `link_binary`, which crate type is dispatched to `link_natively` (invoking the external linker), as opposed to the rlib path that just archives objects plus metadata?"
+prompt.distractors = [
+    "`Rlib`",
+    "`StaticLib`",
+    "`ProcMacro` only when built for plugin use; never `Executable` or `Cdylib`.",
+]
+answer.answer = "`Executable`, `Dylib`, and `Cdylib` (along with `ProcMacro` and `Sdylib`) all go through `link_natively`."
+context = """
+`CrateType::Rlib` and `CrateType::StaticLib` use `rustc`'s own archiving routines; only the cases that produce a real binary or shared library go through `link_natively`, which spawns the external linker. This is why most Rust-to-Rust intermediate work needs no system linker at all.
+"""
+id = "6b6b398a-67ce-402f-a8fe-739d0bffc538"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why is the *order* of arguments in `linker_with_args` semantically load-bearing?"
+prompt.distractors = [
+    "The Windows `link.exe` requires alphabetical ordering of libraries.",
+    "Cargo parses the command back to display it, and a wrong order breaks the pretty printer.",
+    "LLVM caches link inputs by hash; reordering invalidates the cache.",
+]
+answer.answer = "Traditional Unix linkers process inputs left to right and, for static archives, only pull in members that resolve symbols referenced by inputs seen so far. A library placed before its user is discarded as unused, producing an undefined-reference error even though the library is present."
+context = """
+This is why `linker_with_args` puts the crate's own objects first, then local native libs, then upstream Rust crates, then upstream native libs, then search paths, then per-pass flags. The book's warning is explicit: when you hit an undefined reference for a symbol you know is in a library you did link, suspect ordering before absence.
+"""
+id = "9e5dc40f-1cb6-45fc-a361-47e7c2b4f81a"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What prefix do you put on a flag in a `cc` invocation so the compiler driver forwards it to the underlying linker instead of interpreting it itself?"
+answer.answer = "-Wl,"
+answer.alternatives = ["-Wl", "Wl,", "-Wl, prefix", "-Xlinker"]
+context = """
+`-Wl,--gc-sections` tells `cc`/`gcc`/`clang` to forward `--gc-sections` (comma-separated) to `ld`. `-Xlinker FOO` is the equivalent for a single arg with spaces. Inside `rustc`, the `link_arg` helper applies this wrapping when the linker flavor uses `cc`, gated by the `is_ld` boolean on `GccLinker`.
+"""
+id = "83e45920-e53f-4140-b214-94326cfa9358"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which of these is the *default* linking strategy for Rust dependencies (including `std`) on a typical Rust executable?"
+prompt.distractors = [
+    "Dynamic linking, so a single shared `std` is loaded at runtime from the OS.",
+    "No linking at all; rlibs are loaded by `rustc` at runtime via a small loader stub.",
+    "Static-with-prelink, an extra prelink pass that resolves Rust symbols before invoking the system linker.",
+]
+answer.answer = "Static linking. Rust crates including `std` are statically linked into the binary by default, which is why a Rust executable runs on a machine without a Rust toolchain. The C runtime and `libc` are typically dynamic."
+context = """
+This static-Rust/dynamic-libc default is what `rustc` documents as preferring to statically link dependencies. The `-C prefer-dynamic` flag flips Rust dependencies to dynamic where possible. The trade-off is self-contained binaries at the cost of each one carrying its own copy of `std`.
+"""
+id = "a78279bf-55c5-4b37-86b8-d6ba15380805"

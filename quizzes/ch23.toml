@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 23 describes the parallelization of rustc as having an 'easy half' and a 'hard half'. Which is the easy half that has been parallel for years?"
+prompt.distractors = [
+    "Parsing, macro expansion, HIR lowering, and name resolution, because they are pure functions over the token stream.",
+    "Type checking and trait solving, because the next-generation trait solver was designed to be thread-safe from day one.",
+    "Borrow checking, because each `mir_borrowck` query is run on its own function in isolation.",
+]
+answer.answer = "The back end's per-codegen-unit (CGU) work, since CGUs are largely independent and each is optimized by LLVM and emitted to an object file on its own worker thread."
+context = """
+After monomorphization, the code is partitioned into codegen units, and CGUs are independent enough that each can be optimized by LLVM and emitted on its own worker thread with little shared state. This is the mature parallelism in the compiler and is why even an otherwise-serial build uses multiple cores during codegen. The query-driven middle end (typeck, trait solving, MIR opt, borrowck) is the hard half because it runs against shared interners, query caches, and the dep-graph.
+"""
+id = "9b42e613-93b5-4bf8-8164-98f693e4ccb3"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "How many shards does `Sharded<T>` split a structure into in parallel mode? (The constant is `SHARDS = 1 << SHARD_BITS` in `rustc_data_structures::sharded`.)"
+answer.answer = "32"
+answer.alternatives = ["thirty-two", "1 << 5", "2^5"]
+context = """
+`SHARD_BITS: usize = 5` and `SHARDS: usize = 1 << SHARD_BITS = 32` in `compiler/rustc_data_structures/src/sharded.rs`. The power-of-two count means `hash & (SHARDS - 1)` is a cheap mask rather than a modulo. Each shard's `Lock` is wrapped in `CacheAligned` so independent shards do not false-share a cache line.
+"""
+id = "b2444461-24f1-45fc-a414-922679ebfe82"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Two threads both call `tcx.typeck(foo)` concurrently. What does the parallel query system do?"
+prompt.distractors = [
+    "Both threads compute `typeck(foo)` independently and the second result overwrites the first in the cache.",
+    "The second thread spins on an atomic flag until the first finishes, never releasing any locks.",
+    "The query system serializes all queries through a single global mutex, so only one thread runs at a time.",
+]
+answer.answer = "The first thread marks the key `ActiveKeyStatus::Started` in the (sharded) `QueryState.active` map and computes; the second thread finds the in-progress marker, releases the shard lock, blocks on the job's latch, then takes the produced result. The query body runs exactly once."
+context = """
+`QueryState.active: Sharded<HashTable<(K, ActiveKeyStatus)>>` records in-progress markers. On finding `ActiveKeyStatus::Started(job)`, `try_execute_query` calls `drop(state_lock)` before `latch.wait_on(...)` so the shard lock is not held across the wait, then `query.cache.lookup(&key)` returns the value the first thread produced. This is the memoization of Chapter 3 extended across threads: compute once even under concurrent demand.
+"""
+id = "d33eb77e-9201-446f-bc31-37a023926f36"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What kind of bug does the dedicated **deadlock handler** thread (registered via `rustc_thread_pool::ThreadPoolBuilder::deadlock_handler`) exist to detect, the kind that cannot exist single-threaded?"
+answer.answer = "Cross-thread query cycles"
+answer.alternatives = ["query cycles across threads", "cross-thread cycles", "distributed query cycles", "cycles spanning threads"]
+context = """
+Single-threaded, a query cycle (A asks for B asks for C asks for A) is found by walking the call stack. In parallel, the cycle can span threads (thread 1 computes A and waits on B; thread 2 computes B and waits on A); no single stack reveals the cycle. The deadlock handler is a thread whose entire job is to wake when all workers are blocked, examine the global waits-for graph, find the cycle, and report it. Registered in `compiler/rustc_interface/src/util.rs`.
+"""
+id = "b13e5f99-3b45-4e13-a2b3-7c4b59536d35"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What does the `Single` variant of `pub enum Sharded<T> { Single(Lock<T>), Shards(Box<[CacheAligned<Lock<T>>; SHARDS]>) }` exist for?"
+prompt.distractors = [
+    "It is the storage used while the 32-shard `Shards` array is being lazily initialized on first access.",
+    "It holds a single 'overflow' lock for keys whose hash collides with every shard.",
+    "It is a legacy variant from before sharding and is unused in modern rustc.",
+]
+answer.answer = "It is the single-thread fast path: when `is_dyn_thread_safe()` is false at construction (the default `-Zthreads=1` run), `Sharded` uses one `Lock<T>` with no sharding overhead, mirroring the runtime-dispatch principle of `sync.rs`."
+context = """
+`Sharded` follows the same runtime-dispatch design as `sync::Lock`: a parallel-capable build still pays near-zero cost when actually run with one thread. The `Single` variant uses one lock and skips both the shard-routing hash and the 32-element array allocation; the `Shards` variant only kicks in when parallel mode is active.
+"""
+id = "be5c8f13-5a7b-4da2-803d-f12b40e5075c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Which front-end phases remain serial under `-Zthreads=N` in rustc 1.95, even though the query-driven middle end has been parallelized?"
+prompt.distractors = [
+    "Type checking, trait solving, MIR optimization, and borrow checking.",
+    "LLVM optimization and per-CGU codegen.",
+    "Monomorphization collection and codegen-unit partitioning.",
+]
+answer.answer = "Parsing, macro expansion, HIR lowering, and name resolution."
+context = """
+The 'parallel front-end' name predates the current scope of the work; it has shipped piecewise. Under `-Zthreads=N`, the query-driven middle end (typeck, trait solving, MIR opt, borrowck) and the back end run in parallel, but parsing, macro expansion, HIR lowering, and name resolution still run on a single thread. Parallelizing those is a longer-term project goal listed on the parallel-front-end tracking issue.
+"""
+id = "f47597cc-7565-48e7-9cea-27a90282f907"

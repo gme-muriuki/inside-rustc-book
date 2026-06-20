@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 10 frames lowering as a 'normalize early' move. What is the single best reason `rustc` translates the resolved AST into the HIR before type checking, trait solving, or borrow checking ever run?"
+prompt.distractors = [
+    "To shrink the on-disk size of the parsed program so incremental builds load faster.",
+    "To re-run name resolution against the standard library's prelude.",
+    "To split the program into codegen units before the back end touches it.",
+]
+answer.answer = "To desugar the many surface forms (`for`, `while let`, `if let`, `?`, compound assignment, closures, `async`) into a smaller core so that every later pass only has to reason about `loop`/`match`/method calls, never about each surface variant."
+context = """
+§10.1 calls this the universal 'normalize early' move (Lisp special forms, GHC Core). Doing it once in `rustc_ast_lowering` means typeck, trait solving, and `mir_borrowck` never re-derive the desugaring. The HIR's `ExprKind` proves it in the negative: there is no `For`, no `WhileLet`, no `Try` variant.
+"""
+id = "31f73232-8098-4cf6-8a8b-2d841230cd7d"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the rustc term for a trait or type the standard library marks with `#[lang = \"...\"]` so the compiler can refer to it by role rather than by path (the mechanism `lower_expr_for` uses to name `Iterator::next`)?"
+answer.answer = "lang item"
+answer.alternatives = ["lang items", "language item", "language items", "LangItem"]
+context = """
+§10.1 and §10.3 both lean on this. `expr_call_lang_item_fn` looks up `LangItem::IteratorNext` and `LangItem::IntoIterIntoIter` by role, so the `for`-loop desugaring works even when the user shadows `next`, has no `std` in scope, or is compiling `core` itself.
+"""
+id = "b53ea4a5-8a4e-4a04-b2cc-1acba406673f"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A `HirId` is described in §10.1/§10.2 as the *stable, two-level* identity. What are the two levels, and why does the two-level shape matter for incremental compilation?"
+prompt.distractors = [
+    "`(CrateNum, NodeId)`; the crate id stops two crates from colliding on the same node number.",
+    "`(Span, ItemLocalId)`; the span lets diagnostics jump to source without an extra table.",
+    "`(DefId, BodyId)`; a body id is needed because each function compiles independently.",
+]
+answer.answer = "`(OwnerId, ItemLocalId)`: editing a function's body renumbers only the local ids inside *that* owner, so every other owner's ids stay valid and the query system can reuse its cached results."
+context = """
+§10.1 stresses that the AST's `NodeId` is deliberately fragile (insert a node and everything after it renumbers), which would defeat incremental recompilation. Lowering replaces it with `HirId = (OwnerId, ItemLocalId)`. The per-owner `item_local_id_counter` starts at 1 because `ItemLocalId::ZERO` is reserved for the owner node itself.
+"""
+id = "bd7b52d7-fe58-4662-92bc-655955c445ce"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "After lowering, `index_hir` produces an `OwnerNodes` for each owner. Which best describes the structure it builds, and why a `HirId` lookup is therefore O(1)?"
+prompt.distractors = [
+    "A balanced binary tree of `ParentedNode`s keyed by `HirId`, walked top-down on every lookup.",
+    "A `HashMap<HirId, &Node>` shared across the crate, rebuilt from scratch each query.",
+    "A linked list of nodes per owner, scanned linearly until a matching `ItemLocalId` is found.",
+]
+answer.answer = "An `IndexVec<ItemLocalId, ParentedNode>` of every node in the owner, plus the owner's bodies and an `opt_hash_including_bodies` fingerprint; a `HirId = (owner, local_id)` resolves to a node by two array indexings (pick the owner, index by local id)."
+context = """
+§10.2 spells this out: the two-level `HirId` is two-level because the structure it indexes is literally two levels. Each entry is a `ParentedNode` so `tcx.parent_hir_node(n)` can climb upward without a separate parent map, and the single per-owner hash is what feeds Chapter 3's red-green incremental tracking.
+"""
+id = "9bee570c-dc32-475f-a028-758e67e6f65f"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Lowering tags the synthetic span of a desugared `for` loop with a `DesugaringKind` variant so diagnostics can still say 'in this for loop' rather than 'in this match'. What is the name of that variant?"
+answer.answer = "ForLoop"
+answer.alternatives = ["DesugaringKind::ForLoop", "ForLoop variant", "ForLoop desugaring"]
+context = """
+§10.3 walks through the construction: `lower_expr_for` calls `mark_span_with_reason` with `DesugaringKind::ForLoop`, then tags the inner `match` with `MatchSource::ForLoopDesugar` and the inner `loop` with `LoopSource::ForLoop`. These three labels are how 'desugaring is semantics-preserving, but error spans must not lie' (the §10.1 warning) is enforced.
+"""
+id = "b00ccc93-8ff1-4928-a505-b6b3a6d86088"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The §10.2 warning insists 'the HIR is immutable; analysis results live in side tables.' Where, then, is the inferred type of a particular HIR expression actually stored after type checking runs?"
+prompt.distractors = [
+    "Mutated into a new `ty` field on the `hir::Expr` itself, which is why typeck must run before any HIR consumer reads the tree.",
+    "Re-encoded into the expression's `Span` so that any later pass that has the span can recover the type.",
+    "Stored on the `LoweringContext` and re-attached the next time the owner's HIR is rebuilt.",
+]
+answer.answer = "In a separate `TypeckResults` table keyed by `HirId`, produced by typeck and looked up via `tcx`; the HIR itself is built once and never mutated."
+context = """
+This separation is the whole point of the warning in §10.2. Keeping the HIR immutable and hashable is what lets it be a stable cache key for incremental compilation, while the (much more volatile) analysis outputs live in their own query results. Chapter 11 produces the `TypeckResults` map.
+"""
+id = "08ce2b5f-7a4f-43a3-b282-7882c733e791"

@@ -1,0 +1,83 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Chapter 3 frames `rustc` as a spreadsheet. What two properties of the spreadsheet model, applied to queries, make laziness, incrementality, and parallelism fall out as emergent consequences?"
+prompt.distractors = [
+    "Push-based scheduling and a global symbol table.",
+    "Trait-based dynamic dispatch and reference-counted return values.",
+    "Macro expansion fixpoints and on-disk arena allocation.",
+]
+answer.answer = "Memoization (each query's result is cached and reused) and dependency tracking (reading a query records an edge as a side effect of reading)."
+context = """
+A spreadsheet cell with a formula is computed on demand, its result is cached, and the act of computing it records which cells it pulled. `rustc` queries do the same. Because the edge is recorded *as the value is read*, incrementality is free: on rebuild you walk the recorded graph and only recompute what changed. This is also why HIR is reached through `tcx.something(id)` and not raw pointers, the indirection is what makes reading equal to recording.
+"""
+id = "650d77a3-ad91-4e32-9d6e-a768b7990330"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "A query in `rustc` is supposed to be a pure function of its key. The chapter names exactly one sanctioned exception to that purity rule. Which one is it?"
+prompt.distractors = [
+    "I/O to the incremental cache file on disk.",
+    "Mutating a `RefCell` inside `TyCtxt` to cache intermediate values.",
+    "Reading the current wall-clock time for self-profiling.",
+]
+answer.answer = "Diagnostics. A query like `mir_borrowck` may emit errors; `rustc` stores those diagnostics alongside the cached result and replays them when the result is reused, so a cached borrow-check verdict never silently swallows an error on the next build."
+context = """
+If diagnostics were treated as ordinary side effects, an incremental rebuild that reused a cached result would lose the error entirely. The query system handles this by recording diagnostics with the cache entry and replaying them on reuse. The error you see on rebuild may have been computed days ago.
+"""
+id = "2608a894-fa02-4fbe-a161-1a4eac368f83"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "In which file does the `rustc_queries! { ... }` invocation that declares every query live? (Give the path under `compiler/`.)"
+answer.answer = "compiler/rustc_middle/src/queries.rs"
+answer.alternatives = [
+    "rustc_middle/src/queries.rs",
+    "compiler/rustc_middle/src/queries.rs",
+    "queries.rs",
+]
+context = """
+The catalog lives at `compiler/rustc_middle/src/queries.rs`, NOT in `compiler/rustc_middle/src/query/` (that directory holds the plumbing: caches, keys, modifiers, on-disk cache, stack). Every `query name(key) -> value { ... }` block is inside the one top-level `rustc_queries! { ... }` invocation in that file.
+"""
+id = "4c59afee-2c78-419c-b868-bd6265f2baf4"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The `Providers` value that the macro generates holds one entry per query, and the chapter emphasizes (against the Salsa comparison) what shape it has. Which is it?"
+prompt.distractors = [
+    "A trait with one method per query, implemented by each crate; dispatch is via `dyn Providers`.",
+    "A `HashMap<&'static str, Box<dyn Fn>>` keyed on the query name.",
+    "An enum with one variant per query, matched on at every call site.",
+]
+answer.answer = "A plain struct with one `fn`-pointer field per query, giving direct, monomorphic dispatch with no vtable and no `dyn`."
+context = """
+This is the crux of the Salsa comparison. Salsa models query groups as traits (implying `dyn` dispatch or large monomorphization cost); `rustc` chose a struct of bare `fn` pointers so it can call queries in hot loops without dispatch overhead. The outer `Providers` is actually a small wrapper bundling the inner struct of fn pointers with separate extern-provider and hook slots, which is why Lab A installs via `providers.queries.basic_block_count = ...`.
+"""
+id = "6d3e45fd-0b88-4db6-9af0-408ef348af21"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "You add a `/// hello` doc comment above one function and rebuild. Almost nothing downstream recompiles. Which path in the red/green algorithm explains this?"
+prompt.distractors = [
+    "The doc comment is filtered out by the lexer, so no input ever turns red.",
+    "All dependencies of the affected query were already green, so `try_mark_green` proves the node green by pure traversal.",
+    "`eval_always` forces the affected query to skip the algorithm entirely.",
+]
+answer.answer = "The source bytes did change, so the input node turns red and the affected upstream query re-runs; but its freshly computed result hash equals last session's hash, so the node is marked green anyway, and red stops propagating."
+context = """
+This is the re-execute-and-compare path in `try_mark_green`. Red does not blindly propagate. When a node has a red dependency, the query is re-run and its result is hashed; if the new hash matches the stored one, the node is marked green and everything downstream is reused. Doc comments and `cargo fmt` whitespace edits both follow this path, which is why they leave the world unrebuilt.
+"""
+id = "af9e0cba-0fae-4189-8ef0-671a35453c85"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "The query system is split across two crates with a deliberate division of labor. `rustc_middle` holds the catalog, the dep-graph machinery, and the cache/plumbing infrastructure. Which crate holds the per-query macro-generated monomorphizations (the job IDs, on-disk cache load/promote, ICH verification)?"
+answer.answer = "rustc_query_impl"
+answer.alternatives = [
+    "rustc_query_impl crate",
+    "compiler/rustc_query_impl",
+    "the rustc_query_impl crate",
+]
+context = """
+`rustc_query_impl` exists to keep the heavy macro fan-out out of `rustc_middle`. A change to the macro logic or to per-query plumbing therefore does not force every consumer of `rustc_middle` to recompile. Note that the older crate `rustc_query_system` no longer exists in 1.95.0; its machinery has been folded into `rustc_middle::dep_graph`, and `try_mark_green` lives in `compiler/rustc_middle/src/dep_graph/graph.rs`.
+"""
+id = "88f4f4cc-4107-4447-8335-c50055c9fa1f"

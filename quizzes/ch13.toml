@@ -1,0 +1,75 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What distinguishes the THIR from the HIR most concretely?"
+prompt.distractors = [
+    "The THIR keeps the surface `for` loop instead of desugaring it.",
+    "The THIR is durable for the whole compilation, like the HIR.",
+    "The THIR represents items (structs, traits) as well as bodies.",
+]
+answer.answer = "Every THIR node carries its type inline, so downstream analyses never consult a `TypeckResults` side table; method calls and overloaded operators are folded into `ExprKind::Call` and implicit derefs are made explicit."
+context = """
+The HIR carries types only indirectly via the `TypeckResults` side table keyed by `HirId`. The THIR is built per body by the `thir_body` query specifically to bake the types in, fold method calls and overloaded operators into a uniform `Call`, and write out autoderefs as explicit `Deref` nodes. It is also bodies-only and temporary (dropped after MIR construction and the safety checks).
+"""
+id = "fd8bc2e5-1f98-414c-898f-f2302f25001a"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which query, given a `LocalDefId`, builds the temporary THIR arena for a single body that `check_match` and the MIR builder both consume?"
+answer.answer = "thir_body"
+answer.alternatives = ["tcx.thir_body", "thir_body(def_id)", "thir_body query"]
+context = """
+`tcx.thir_body(def_id)` returns the body's `Thir` arena (the flat `ExprId`/`ArmId`-indexed arrays) and the `ExprId` of its root. The arena is dropped after use to keep peak memory down, which is why the THIR is described as scaffolding rather than a durable IR.
+"""
+id = "05734e00-46c8-4385-9c7b-edf6c7331212"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Exhaustiveness and reachability are framed in the chapter as one question asked two ways. What is the underlying notion?"
+prompt.distractors = [
+    "Inhabitedness: whether the scrutinee type has any values at all.",
+    "Coverage: counting how many distinct values each arm matches.",
+    "Confluence: whether reordering the arms changes the result.",
+]
+answer.answer = "Usefulness: a pattern `p` is useful relative to the patterns above it if there is at least one value `p` matches that none of those earlier patterns match."
+context = """
+Exhaustiveness is the question \"is the wildcard `_` useful relative to all arms?\" (if yes, the value it matches is the uncovered witness). Reachability is the question \"is each arm useful relative to the arms above it?\" (if no, the arm is unreachable). One recursive procedure, `compute_match_usefulness`, answers both at once.
+"""
+id = "be5de7b7-c94b-4408-ac92-6a40a1b5d0c9"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What three buckets does `ConstructorSet::split` partition a type's constructors into when checking a column of the matrix?"
+prompt.distractors = [
+    "Used, unused, and uncovered.",
+    "Reachable, unreachable, and dead.",
+    "Variants, ranges, and slices.",
+]
+answer.answer = "`present` (named by some row's head pattern), `missing` (inhabited constructors not covered by the column), and `missing_empty` (uninhabited absentees the algorithm treats as covered)."
+context = """
+The verified `SplitConstructorSet` in `rustc_pattern_analysis::constructor` has exactly these three fields: `present: SmallVec<[Constructor<Cx>; 1]>`, `missing: Vec<Constructor<Cx>>`, `missing_empty: Vec<Constructor<Cx>>`. Together they cover all constructors of the type. The algorithm then specializes against the missing group as a single `Constructor::Missing` (the wildcard optimization) to detect uncovered cases.
+"""
+id = "16e23ba3-5dcf-4eeb-8b95-32cfc1026a3a"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which standalone crate contains the usefulness algorithm and is decoupled from the host compiler via the `PatCx` trait?"
+answer.answer = "rustc_pattern_analysis"
+answer.alternatives = ["rustc-pattern-analysis", "pattern_analysis", "rustc_pattern_analysis crate"]
+context = """
+The algorithm lives in `rustc_pattern_analysis`, with the public entry `compute_match_usefulness` in its `usefulness` module. The crate is written against the `PatCx` trait (rustc supplies `RustcPatCtxt`) so it can be tested in isolation and reused by tools like Clippy. Its Cargo feature `rustc` is default-on and gates all rustc-internal dependencies.
+"""
+id = "9740606a-f351-450a-a3f5-3bc26e20a633"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When `compute_match_usefulness` returns a non-empty witness set for a `match`, what does `check_match` do with it?"
+prompt.distractors = [
+    "It silently inserts a synthetic `_` arm so codegen has a complete jump table.",
+    "It downgrades the result to the `UNREACHABLE_PATTERNS` lint.",
+    "It re-runs the trait solver to see if any obligation discharges the witness.",
+]
+answer.answer = "It emits the `E0004` diagnostic `non-exhaustive patterns: <witness> not covered`, printing the constructed `WitnessPat` as the missing pattern."
+context = """
+`check_match` (in `rustc_mir_build::thir::pattern::check_match`) walks the THIR with a `MatchVisitor`; at each `ExprKind::Match` it lowers arms to `DeconstructedPat`s, calls `compute_match_usefulness`, and turns any returned `WitnessPat` into the `E0004` diagnostic. Arms that came back not-useful become the `UNREACHABLE_PATTERNS` lint. The visitor also honours `match_source` so desugared matches from `for`/`while let`/`?` are not blamed in user-facing language.
+"""
+id = "77737e4e-98b4-4167-be75-d5464e74af44"

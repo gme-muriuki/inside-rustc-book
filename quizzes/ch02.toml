@@ -1,0 +1,71 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The driver's `Callbacks` trait offers four hook points. Where do Clippy, Miri, and Rustdoc do most of their work?"
+prompt.distractors = [
+    "`config`, before any source is read, so they can rewrite the `Config`.",
+    "`after_crate_root_parsing`, on the raw AST before any name resolution.",
+    "`after_expansion`, immediately after macros are expanded but before type checking.",
+]
+answer.answer = "`after_analysis`, once the program is fully parsed, expanded, type-checked, and borrow-checked."
+context = """
+The hooks `config`, `after_crate_root_parsing`, `after_expansion`, and `after_analysis` correspond to coarse phase boundaries. Tools that consume a fully analyzed program (Clippy lints, Miri's interpreter, Rustdoc's HTML emitter) all attach at `after_analysis`. Each callback returns `Compilation::Continue` or `Compilation::Stop`; Rustdoc returns `Stop` because it does not want codegen to run.
+"""
+id = "74aec369-59ba-4f2e-a77e-0f60ccfc5d5f"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Name the two integer fields that make up a `DefId`."
+answer.answer = "CrateNum and DefIndex"
+answer.alternatives = ["CrateNum, DefIndex", "krate and index", "CrateNum + DefIndex", "crate and def index"]
+context = """
+`pub struct DefId { krate: CrateNum, index: DefIndex }` lives in `compiler/rustc_span/src/def_id.rs`. `CrateNum` is session-local (the order crates are loaded in this compilation) which is why a `DefId` is fast but not stable across sessions. The stable counterpart is `DefPathHash`, a 128-bit fingerprint built from a `StableCrateId` and a hash of the def-path.
+"""
+id = "5f802b07-c32a-4c50-ac30-fab9e29a08a5"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does `tcx.optimized_mir` take a `DefId` while `tcx.typeck` and `tcx.mir_built` take a `LocalDefId`?"
+prompt.distractors = [
+    "`DefId` is faster to hash, and `optimized_mir` is on the hot codegen path.",
+    "It is a historical accident; both forms work equally well for any of these queries.",
+    "`LocalDefId` cannot survive serialization, and `optimized_mir` results are serialized to disk.",
+]
+answer.answer = "`optimized_mir` is the only query in the chain that can fetch non-local MIR (it must work cross-crate when an upstream function's body is needed for inlining); `typeck` and `mir_built` need the function's local HIR, which only exists for the crate being compiled."
+context = """
+The doc-comment on `optimized_mir` in `compiler/rustc_middle/src/queries.rs` states this verbatim: 'This is also the only query that can fetch non-local MIR, at present.' Encoding the local-vs-cross-crate distinction in the *type* of the query key, `LocalDefId` for local-only versus `DefId` for general, is a compile-time guarantee, not a runtime assertion.
+"""
+id = "4cb3de6a-bded-4aa0-96bd-3d637e80f685"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What is the two-level structure of a `HirId` (which two fields does it carry)?"
+answer.answer = "OwnerId and ItemLocalId"
+answer.alternatives = ["owner and local_id", "OwnerId, ItemLocalId", "owner + local_id", "OwnerId + ItemLocalId"]
+context = """
+`pub struct HirId { owner: OwnerId, local_id: ItemLocalId }`. The two-level scheme exists for incremental stability: `local_id` is numbered relative to its owning item, so adding a line to one function does not renumber the nodes in another function. That confines edit-churn to a single owner and lets the dependency graph keep unrelated analysis results green.
+"""
+id = "4627a3bb-1d1c-487c-bfbe-d0f73e4e3641"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The §2.3 query chain runs in the order `type_of` to `typeck` to `mir_built` to `mir_borrowck` to `optimized_mir` to codegen. What actually drives that order?"
+prompt.distractors = [
+    "The driver explicitly calls each query in sequence inside a top-level `main`-like function.",
+    "A scheduler walks a list of phase descriptors and invokes each one's provider in declared order.",
+    "`Callbacks::after_analysis` runs `type_of`, then `Callbacks::after_expansion` runs `typeck`, and so on through the trait's hooks.",
+]
+answer.answer = "The driver asks for the final result (codegen), and each query lazily pulls its predecessor's result on demand; the visible top-to-bottom order is an emergent consequence of that pull, with each result memoized."
+context = """
+This is the duality §2.1 names: the driver offers a *push* skin of coarse hooks (`Callbacks`) but the fine-grained sequencing is a *pull* spine handled by the query system. Codegen pulls `optimized_mir`, which pulls the borrow-checked body, which pulls `mir_built`, which pulls `typeck`, which pulls `type_of`. Chapter 3 dissects the engine that makes this fast.
+"""
+id = "673af003-5a0e-42ea-8a8c-15fad4c89892"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which query returns the set of `LocalDefId`s that have MIR bodies, and is the natural way for a custom driver to enumerate functions worth probing?"
+answer.answer = "mir_keys"
+answer.alternatives = ["tcx.mir_keys", "mir_keys(())", "mir_keys query"]
+context = """
+`mir_keys(_: ()) -> &FxIndexSet<LocalDefId>` is defined in `compiler/rustc_middle/src/queries.rs`. The §2.4 lab uses it precisely because it filters out items that have no body (structs, modules, type aliases) for which the chain ending in `optimized_mir` would make no sense.
+"""
+id = "427a4bab-e93b-4da2-afe5-f5c755429a17"

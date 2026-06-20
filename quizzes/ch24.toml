@@ -1,0 +1,71 @@
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Name the central `rustc_errors` type that all diagnostics flow into, the one sink that every phase (lexer, parser, resolver, typeck, trait solver, borrowck) emits through."
+answer.answer = "DiagCtxt"
+answer.alternatives = ["diagctxt", "the DiagCtxt", "rustc_errors::DiagCtxt", "DiagCtxtHandle"]
+context = """
+A `DiagCtxt` deals with errors and other compiler output. It defers ordinary errors for batch reporting, sits behind a single lock for the parallel compiler (Chapter 23), and tracks emissions for incremental replay (Chapter 22). `Diag::emit` hands the inner `DiagInner` to it; the context dedups and forwards to an `Emitter`.
+"""
+id = "9ea65dde-98f7-4c3f-8076-414bddd96df3"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What happens if a `Diag` is dropped without `emit` or `cancel` being called on it?"
+prompt.distractors = [
+    "The diagnostic is silently discarded so the build keeps going.",
+    "The diagnostic is queued and emitted at the next compiler shutdown.",
+    "Nothing; `Diag` is just a builder and dropping it is normal.",
+]
+answer.answer = "`Diag::drop` panics (after first re-emitting the diagnostic as a `Level::Bug`), so the compiler ICEs rather than silently losing an error."
+context = """
+This is the destructor-bomb invariant: every `Diag` you start, you must finish (with `emit`, `cancel`, `delay_as_bug`, `stash`, etc.). The destructor enforces it at the type level so no error can be silently dropped. `Diag::drop` guards with `std::thread::panicking()` to avoid a double-panic during unwinding.
+"""
+id = "e866c455-2f94-44aa-984d-5530b3e85a3c"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "In rustc 1.95, which type renders human-readable, caret-underlined diagnostics in the terminal?"
+prompt.distractors = [
+    "`HumanEmitter` in `rustc_errors::emitter`.",
+    "`JsonEmitter` in `rustc_errors::json`.",
+    "`SilentEmitter` in `rustc_errors::emitter`.",
+]
+answer.answer = "`AnnotateSnippetEmitter` in `rustc_errors::annotate_snippet_emitter_writer`, built on the external `annotate-snippets` crate."
+context = """
+`HumanEmitter` was removed before 1.95.0 shipped. The in-tree human renderer is now `AnnotateSnippetEmitter`, which resolves byte-offset `Span`s through the `SourceMap` (Chapter 6) and draws the source line, carets, notes, and the inline suggestion diff. `JsonEmitter` produces the structured form that `cargo` and rust-analyzer consume.
+"""
+id = "adb748cd-73e6-40b2-8d6e-55b1d6913113"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which `Applicability` variant is the only one that `cargo fix` and `rustfix` apply automatically?"
+answer.answer = "MachineApplicable"
+answer.alternatives = ["Applicability::MachineApplicable", "machineapplicable", "machine-applicable"]
+context = """
+`Applicability` has four variants (`MachineApplicable`, `MaybeIncorrect`, `HasPlaceholders`, `Unspecified`) defined in `rustc_lint_defs`. Only `MachineApplicable` is the contract that means "safe to apply automatically." `compiletest`'s `rustfix-only-machine-applicable` directive sets `Filter::MachineApplicableOnly` for the same reason. Over-claiming `MachineApplicable` is a real bug because it breaks `cargo fix` for users.
+"""
+id = "fdaacc16-4f00-40aa-b317-0ef3dae8d770"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "What kind of `LintPass` is the built-in `WHILE_TRUE` lint (which flags `while true { ... }` and suggests `loop { ... }`)?"
+prompt.distractors = [
+    "A `LateLintPass`, because it needs to know the type of the condition expression.",
+    "A pre-expansion pass like `KeywordIdents`, run before any macros are expanded.",
+    "A `MirLintPass`, because it walks the MIR control-flow graph after typeck.",
+]
+answer.answer = "An `EarlyLintPass`. Detecting a literal `while true` is purely syntactic (no types needed), so it runs over the AST after macro expansion."
+context = """
+`compiler/rustc_lint/src/builtin.rs` shows `declare_lint_pass!(WhileTrue => [WHILE_TRUE]);` and `impl EarlyLintPass for WhileTrue`. The check matches `ast::ExprKind::While`, peels parens to find a boolean literal, and guards with `!cond.span.from_expansion()` so it does not lint macro-generated code. `UNUSED_MUST_USE` is the canonical late counterpart, since it needs `LateContext::typeck_results` to see the discarded expression's type.
+"""
+id = "6877d15e-a4f8-4fd4-a188-1c60c2de645d"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Which per-owner query computes the `ShallowLintLevelMap` that resolves whether a fired lint becomes silent, a warning, or an error at a given span?"
+answer.answer = "shallow_lint_levels_on"
+answer.alternatives = ["shallow_lint_levels_on()", "tcx.shallow_lint_levels_on", "shallow_lint_levels"]
+context = """
+`shallow_lint_levels_on(key: hir::OwnerId) -> &'tcx ShallowLintLevelMap` lives in `compiler/rustc_middle/src/queries.rs` with its provider in `compiler/rustc_lint/src/levels.rs`. Level resolution walks from the firing span up through enclosing owners, honoring the innermost `allow`/`warn`/`deny`/`forbid` attribute; `forbid` cannot be overridden by a nested `allow`. Lints that fire before levels exist are recorded as `BufferedEarlyLint`s and emitted later.
+"""
+id = "47362475-49db-488b-914f-b20d77ec2fc9"

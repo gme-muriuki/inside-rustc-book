@@ -1,0 +1,35 @@
+{
+  "theme": "base",
+  "htmlLabels": false,
+  "themeVariables": {
+    "fontFamily": "'JetBrains Mono', 'SF Mono', 'Berkeley Mono', 'Consolas', 'DejaVu Sans Mono', monospace",
+    "fontSize": "14px",
+    "primaryColor": "#FBF7F0",
+    "primaryTextColor": "#1a1a1a",
+    "primaryBorderColor": "#1a1a1a",
+    "lineColor": "#1a1a1a",
+    "secondaryColor": "#F5EFE6",
+    "tertiaryColor": "#FBF7F0",
+    "mainBkg": "#FBF7F0",
+    "nodeBkg": "#FBF7F0",
+    "edgeLabelBackground": "#FBF7F0",
+    "clusterBkg": "#F5EFE6",
+    "clusterBorder": "#1a1a1a",
+    "noteBkgColor": "#F5EFE6",
+    "noteBorderColor": "#1a1a1a",
+    "noteTextColor": "#1a1a1a",
+    "labelTextColor": "#1a1a1a",
+    "titleColor": "#1a1a1a"
+  },
+  "flowchart": {
+    "useMaxWidth": false,
+    "htmlLabels": true,
+    "curve": "basis",
+    "padding": 12,
+    "nodeSpacing": 34,
+    "rankSpacing": 36,
+    "wrappingWidth": 280
+  },
+  "sequence": { "useMaxWidth": false },
+  "state": { "useMaxWidth": false }
+}

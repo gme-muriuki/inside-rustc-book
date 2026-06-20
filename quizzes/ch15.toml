@@ -1,0 +1,85 @@
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "Why does the modern borrow checker run on MIR rather than on the AST or HIR?"
+prompt.distractors = [
+    "MIR is the only IR small enough to fit in the inference context's arena.",
+    "The AST has already been thrown away by the time borrow checking runs.",
+    "Borrow checking only needs syntactic information, and MIR is the textually simplest form.",
+]
+answer.answer = "Borrow checking is a flow-sensitive question (along every execution path, is some borrow violated?), and flow-sensitive dataflow analyses are defined over a control-flow graph of basic blocks, which is exactly what MIR provides and what a tree IR does not."
+context = """
+The Chapter 14 MIR exposes every borrow (`Rvalue::Ref`), move (`Operand::Move`), and edge as an explicit operation at an explicit point. Reasoning about \"is this value mutated while borrowed?\" along every CFG path requires the graph; \"later\" and \"on this branch\" stop being vague and become precise graph relationships. The dev-guide is explicit: \"using the MIR enables non-lexical lifetimes, which are regions derived from the control-flow graph.\"
+"""
+id = "a4c8e1f2-9b3d-4e5a-8f7c-2d1b6a9c3e85"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "What does the acronym NLL stand for, and what does an NLL borrow's region end at instead of the closing brace of its enclosing block?"
+answer.answer = "Non-Lexical Lifetimes; the region ends at the last actual use of the reference along each CFG path."
+answer.alternatives = [
+    "Non-Lexical Lifetimes; last use",
+    "Non-Lexical Lifetimes",
+    "non-lexical lifetimes, last use on the CFG",
+]
+context = """
+The old lexical checker extended every borrow to the closing brace of its enclosing block; that rejected mountains of safe code. NLL derives a borrow's region from where the reference is actually used in the CFG, which is why `let first = &v[0]; println!(first); v.push(4);` is accepted: `first`'s region ends at the `println!`, so the later mutation is outside it.
+"""
+id = "b5d9f2a3-7c4e-4f6b-9a8d-3e2c7b8d4f96"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "The `mir_borrowck` query renames every named lifetime in the body to a fresh inference variable on entry. What type are those variables, and why is the renaming the first step?"
+prompt.distractors = [
+    "`Ty<'tcx>`, because lifetimes are unified with types in the same inference table.",
+    "`BorrowIndex`, because each lifetime ends up corresponding to exactly one loan.",
+    "`Symbol`, because the renamer interns the new names to avoid collisions with user identifiers.",
+]
+answer.answer = "`RegionVid` (an opaque integer region inference variable). The renaming runs first because the checker does not trust the user's lifetime names; it re-derives each lifetime's extent from how the code is actually used, which is exactly what NLL means at the implementation level."
+context = """
+`replace_regions_in_mir` walks the body and replaces every region with a fresh `RegionVid`. The function's text no longer says \"this reference lives for `'a`\" but \"this reference lives for region variable #7, and we will figure out what #7 actually is.\" The renaming also captures a `UniversalRegions` struct distinguishing named (signature) regions from local existential ones.
+"""
+id = "c6e0a3b4-8d5f-4a7c-ab9e-4f3d8c9e5fa7"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "During the MIR type-check, why does `rustc_borrowck` run a *second* type-checking pass over the body when type checking already passed in Chapter 11?"
+prompt.distractors = [
+    "To catch type errors that opaque-type inference deferred from the first pass.",
+    "To rebuild the inference context after `replace_regions_in_mir` invalidated the original one.",
+    "To verify that MIR-building did not introduce any ill-typed temporaries.",
+]
+answer.answer = "Not to find type errors, but to accrue **outlives constraints**: every assignment, call, and return that relates `&'a T` to `&'b T` records `'a: 'b` (and liveness facts) into an `OutlivesConstraintSet` for region inference to solve."
+context = """
+The borrowck `TypeChecker` doc says it \"visits the MIR and enforces all the constraints needed for it to be valid and well-typed; along the way, it accrues region constraints.\" The type-checking is a means; the constraints are the end. Each constraint is also tagged with a `ConstraintCategory` (assignment, call, return, closure capture) so later borrow-error diagnostics can name the operation responsible.
+"""
+id = "d7f1b4c5-9e6a-4b8d-bcaf-5a4e9daf6ab8"
+
+[[questions]]
+type = "ShortAnswer"
+prompt.prompt = "Region inference collapses regions that mutually outlive each other into a single solving unit, so values are computed per-unit instead of per-region. What graph-theoretic object are those units?"
+answer.answer = "Strongly-connected components"
+answer.alternatives = [
+    "SCC",
+    "SCCs",
+    "strongly connected components",
+    "strongly-connected component",
+    "ConstraintSccIndex",
+]
+context = """
+`RegionInferenceContext` builds the `'a: 'b` outlives graph and condenses it via Tarjan's algorithm into SCCs; the `constraint_sccs` and `scc_values` fields are keyed by `ConstraintSccIndex`. Working per-SCC is the efficiency that lets region inference scale, because a mutually-outliving cluster is computed once instead of chased to a fixpoint region by region.
+"""
+id = "e8a2c5d6-af7b-4c9e-cdba-6b5fadba7bc9"
+
+[[questions]]
+type = "MultipleChoice"
+prompt.prompt = "When `-Zpolonius` is enabled, what does the borrow checker emit instead of (or alongside) NLL's region values, and which engine consumes them?"
+prompt.distractors = [
+    "LLVM IR alias-analysis metadata, consumed by LLVM's `BasicAA` pass.",
+    "SMT formulas in SMT-LIB format, consumed by Z3 inside the compiler.",
+    "Type-system obligations, consumed by `rustc_next_trait_solver` as ordinary trait goals.",
+]
+answer.answer = "Datalog-style input facts such as `loan_issued_at`, `loan_invalidated_at`, and `subset_base`, consumed by a Datalog solver that computes `loan_live_at` as an output. The loan-centric formulation accepts strictly more safe programs than NLL's region-centric one."
+context = """
+NLL answers \"where is this region valid?\" and infers loan conflicts from the answer; Polonius answers \"which loans are live here?\" directly. `-Zpolonius` accepts `legacy` (default when given no value) or `next`; absent, Polonius is off and NLL is the default. The dev-guide lists the input facts; `loan_live_at` is explicitly an output, not an input.
+"""
+id = "f9b3d6e7-b08c-4daf-debc-7c6abecb8cda"

@@ -1,0 +1,40 @@
+/* Custom mdbook-quiz tweaks. Lives outside the plugin-managed
+   src/quiz/style.css so a future `mdbook-quiz` reinstall does not overwrite
+   it. */
+
+/* ShortAnswer / FillIn input fields.
+   The default styling is browser-default + 3px/6px padding, which looks
+   bare against the rest of the quiz card. Bring the input up to the same
+   visual weight as the choice options and submit button. */
+.mdbook-quiz input[type=text],
+.mdbook-quiz textarea {
+    padding: 8px 12px;
+    font-size: 1em;
+    font-family: inherit;
+    line-height: 1.4;
+    border: 1px solid var(--mdbook-light-border-color);
+    border-radius: 4px;
+    background: var(--mdbook-bg);
+    color: var(--mdbook-fg);
+    margin-bottom: 0.5em;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mdbook-quiz input[type=text]:focus,
+.mdbook-quiz textarea:focus {
+    outline: none;
+    border-color: var(--mdbook-button-border-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--mdbook-button-border-color) 25%, transparent);
+}
+
+/* Slightly larger min-height on textarea so multi-line answers have room to
+   breathe; the default 5em is fine but feels short on wide screens. */
+.mdbook-quiz textarea {
+    min-height: 6em;
+}
+
+/* Separate the submit button from the input above it. */
+.mdbook-quiz input[type=submit] {
+    margin-top: 0.75em;
+    padding: 6px 14px;
+}
