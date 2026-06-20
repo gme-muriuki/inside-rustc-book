@@ -53,7 +53,7 @@ download_extract mdbook-admonish \
     "https://github.com/tommilligan/mdbook-admonish/releases/download/${ADMONISH_VERSION}/mdbook-admonish-${ADMONISH_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
 
 download_extract mdbook-quiz \
-    "https://github.com/cognitive-engineering-lab/mdbook-quiz/releases/download/${QUIZ_VERSION}/mdbook-quiz_x86_64-unknown-linux-gnu_full.tar.gz"
+    "https://github.com/cognitive-engineering-lab/mdbook-quiz/releases/download/${QUIZ_VERSION}/mdbook-quiz_x86_64-unknown-linux-gnu_bare.tar.gz"
 
 download_extract mdbook-pagetoc \
     "https://github.com/slowsage/mdbook-pagetoc/releases/download/${PAGETOC_VERSION}/mdbook-pagetoc-${PAGETOC_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
