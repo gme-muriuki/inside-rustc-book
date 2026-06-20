@@ -3,6 +3,7 @@
 [Cover](cover.md)
 [Epigraph](epigraph.md)
 [Front Matter](preface.md)
+[From the Author](from-the-author.md)
 
 # Part 0: Foundations
 
