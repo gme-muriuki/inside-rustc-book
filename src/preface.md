@@ -39,7 +39,7 @@ The **rust-lang/rust contributors** wrote the compiler this book describes. The 
 
 The list is incomplete by design. The compiler is the product of hundreds of contributors whose names do not appear above, and the working groups absorb the work of many more. This book teaches their compiler.
 
-To the **Rust community**, for treating a book like this as a contribution rather than an intrusion: thank you.
+To the **Rust community**, for keeping the codebase open, the dev guide current, and the contribution paths (`E-mentor`, the `wg-*` working groups, the Zulip streams) clear enough that an outsider could find a way in: thank you.
 
 ---
 
