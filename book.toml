@@ -11,11 +11,8 @@ default-theme = "ayu"
 preferred-dark-theme = "ayu"
 no-section-label = false
 mathjax-support = false
-# TODO: fill in once the book is hosted on GitHub. mdBook auto-renders an
-# "edit this page" pencil icon on every page when this is set.
-git-repository-url = ""
-# Optional GitHub edit URL template (uncomment after setting git-repository-url):
-# edit-url-template = "https://github.com/<owner>/<repo>/edit/main/{path}"
+git-repository-url = "https://github.com/gme-muriuki/inside-rustc-book"
+edit-url-template = "https://github.com/gme-muriuki/inside-rustc-book/edit/main/{path}"
 additional-css = ["./mdbook-admonish.css", "./diagrams.css", "./theme/pagetoc.css", "./theme/pagetoc-tweaks.css", "./theme/quiz-tweaks.css", "./theme/highlight-tweaks.css", "./theme/reader-enhancements.css"]
 additional-js = ["./theme/pagetoc.js", "./theme/glossary-tooltip.js", "./theme/diagram-zoom.js", "./theme/reading-time.js", "./theme/quiz-progress.js"]
 
