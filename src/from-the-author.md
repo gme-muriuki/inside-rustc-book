@@ -28,7 +28,7 @@ I am not a compiler expert. Maybe one day. I keep an open mind to learning and t
 
 ## A sibling project
 
-I also maintain `rust atlas`, a smaller project that orients you when you feel lost inside the `rust-lang/rust` codebase. If you are exploring the source alongside this book, it may help.
+I also maintain **rustc Atlas** ([github.com/gme-muriuki/atlas](https://github.com/gme-muriuki/atlas)), an interactive map of the Rust compiler. It indexes the `rust-lang/rust` workspace and draws it as a clickable graph: each crate is a box, lines show which crates depend on which, click any box to open the module tree inside. If this book is your guide to *what* the compiler does, the atlas helps you find *where* it does it. Useful as a companion while you read.
 
 ## The cover
 
