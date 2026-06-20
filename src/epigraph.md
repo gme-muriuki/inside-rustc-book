@@ -1,3 +1,3 @@
-*There must be something which moves without being moved, and is the cause of motion in all else.*
+*You can outsource intelligence but you can't outsource understanding.*
 
-after Aristotle, *Metaphysics* XII
+James Muriuki Maina
