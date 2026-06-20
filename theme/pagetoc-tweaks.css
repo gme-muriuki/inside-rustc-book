@@ -2,7 +2,8 @@
    `mdbook-pagetoc` reinstall does not overwrite it.
 
    The default mdbook-pagetoc only shows the right-rail TOC at viewport
-   >= 1440px (because its positioning math assumes that minimum). At
+   >= 1440px (because its positioning math assumes that minimum, and ALL
+   of its link styling sits inside the same >= 1440 media query). At
    narrower widths the pagetoc would render off-screen, so the plugin
    hides it. That cuts off every laptop user on a 1366 or 1280 panel.
 
@@ -12,10 +13,13 @@
         at the viewport right edge.
      2. Lowers the display floor to 1280px (still hides below that,
         where there genuinely is not room).
-     3. Hides the pagetoc when the main sidebar is open AND viewport is
+     3. Re-applies the full link styling (display:block, border-left,
+        per-level indents, hover/active states) at 1280px and up so the
+        TOC actually looks like a TOC and not a wall of inline text.
+     4. Hides the pagetoc when the main sidebar is open AND viewport is
         below 1600px, to avoid three-column cramping. Reader collapses
         the sidebar (or widens the window) to bring the pagetoc back.
-     4. Adds breathing-room sizing (240px wide, 7px line padding, looser
+     5. Adds breathing-room sizing (240px wide, 7px line padding, looser
         line-height, softer H3/H4 indents).
 */
 
@@ -37,16 +41,38 @@
         overflow-y: auto;
         padding: 8px 4px;
     }
+
+    /* Link styling: re-apply the full set from mdbook-pagetoc's default
+       (which was scoped to >= 1440 only) plus our breathing-room tweaks. */
     .pagetoc a {
+        display: block;
+        text-align: left;
+        text-decoration: none;
+        border-left: 1px solid var(--sidebar-bg);
+        color: var(--fg) !important;
         padding-top: 7px;
         padding-bottom: 7px;
+        padding-left: 10px;
         line-height: 1.35;
+    }
+    .pagetoc a:hover,
+    .pagetoc a.active,
+    .pagetoc .active {
+        background: var(--sidebar-bg);
+        color: var(--sidebar-fg) !important;
+    }
+    .pagetoc .pagetoc-H2 {
+        padding-left: 20px;
     }
     .pagetoc .pagetoc-H3 {
         padding-left: 32px;
     }
     .pagetoc .pagetoc-H4 {
         padding-left: 48px;
+    }
+    .pagetoc .pagetoc-H5,
+    .pagetoc .pagetoc-H6 {
+        display: none;
     }
 }
 
