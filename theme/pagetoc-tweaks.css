@@ -34,15 +34,13 @@
     display: none !important;
 }
 
-/* Main visible state at 1280px and up: fixed, right-anchored. Pulled
-   inward a touch (1.75em from right edge) so the panel does not feel
-   crammed against the viewport corner. */
+/* Main visible state at 1280px and up: fixed, right-anchored. */
 @media only screen and (min-width: 1280px) {
     .sidetoc {
         display: block !important;
         position: fixed !important;
         top: calc(var(--menu-bar-height, 50px) + 1em);
-        right: 1.75em;
+        right: 1em;
         left: auto !important;
         margin: 0 !important;
     }
