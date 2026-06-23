@@ -287,3 +287,116 @@ sup.footnote-reference a:hover {
     0%   { background: var(--searchresults-li-bg, rgba(255, 230, 100, 0.4)); }
     100% { background: var(--quote-bg, rgba(127, 127, 127, 0.06)); }
 }
+
+/* ============================================================ */
+/* Reading-progress badge (menu bar)                            */
+/* ============================================================ */
+
+#reading-progress-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0 0.6em;
+    margin: 0 0.25em;
+    cursor: pointer;
+    color: var(--icons, currentColor);
+    font: inherit;
+    font-size: 0.9em;
+    line-height: 1.6;
+    height: calc(var(--menu-bar-height) - 12px);
+}
+#reading-progress-badge:hover {
+    color: var(--icons-hover, var(--fg));
+    border-color: var(--theme-popup-border, rgba(127, 127, 127, 0.4));
+    background: var(--theme-hover, rgba(127, 127, 127, 0.08));
+}
+.reading-progress-icon {
+    font-size: 1.05em;
+}
+.reading-progress-text {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ */
+/* Heading-anchor-copy button                                   */
+/* ============================================================ */
+/* Renders an SVG chain-link icon (currentColor) to the right of */
+/* H2/H3/H4 in main content. Hidden by default, fades in at 60% */
+/* on heading hover, full opacity when itself hovered. Click    */
+/* swaps the icon for a "Copied!" pill that fades back out      */
+/* after ~1.3s. */
+
+main h2,
+main h3,
+main h4 {
+    position: relative;
+}
+
+.heading-anchor-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: 0.5em;
+    padding: 0.1em 0.45em;
+    border-radius: 4px;
+    color: var(--icons, currentColor);
+    font: inherit;
+    font-size: 0.55em;
+    line-height: 1;
+    vertical-align: 0.25em;
+    opacity: 0;
+    transform: translateY(-1px);
+    transition:
+        opacity 0.15s ease,
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+main h2:hover .heading-anchor-copy,
+main h3:hover .heading-anchor-copy,
+main h4:hover .heading-anchor-copy,
+.heading-anchor-copy:focus-visible {
+    opacity: 0.6;
+}
+.heading-anchor-copy:hover,
+.heading-anchor-copy:focus-visible:hover {
+    opacity: 1 !important;
+    background: var(--theme-hover, rgba(127, 127, 127, 0.12));
+    color: var(--links, var(--icons-hover, var(--fg)));
+}
+
+.heading-anchor-icon {
+    display: inline-flex;
+    align-items: center;
+}
+.heading-anchor-icon svg {
+    display: block;
+}
+
+.heading-anchor-label {
+    font-size: 1.1em;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--green, #4ca964);
+    white-space: nowrap;
+    max-width: 0;
+    overflow: hidden;
+    transition: max-width 0.18s ease;
+}
+
+.heading-anchor-copy.copied {
+    opacity: 1 !important;
+    background: transparent;
+}
+.heading-anchor-copy.copied .heading-anchor-icon {
+    display: none;
+}
+.heading-anchor-copy.copied .heading-anchor-label {
+    max-width: 6em;
+}
