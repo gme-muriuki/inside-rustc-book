@@ -180,6 +180,35 @@ figure.diagram-zoomable:hover {
 }
 
 /* ============================================================ */
+/* Sidebar chapter-completion checkmarks                        */
+/* ============================================================ */
+
+.sidebar-progress-mark {
+    color: #57a64a;
+    font-weight: 700;
+    font-size: 0.9em;
+    margin-left: 0.3em;
+    opacity: 0.85;
+}
+
+/* ============================================================ */
+/* rustc-citation GitHub links                                  */
+/* ============================================================ */
+
+a.rustc-citation-link {
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+}
+a.rustc-citation-link:hover {
+    border-bottom-style: solid;
+    background: var(--quote-bg, rgba(127, 127, 127, 0.08));
+    border-radius: 2px;
+}
+a.rustc-citation-link code {
+    color: inherit;
+}
+
+/* ============================================================ */
 /* Footnotes                                                    */
 /* mdBook + pulldown-cmark renders footnotes as a numbered list */
 /* at the page bottom inside <div class="footnote-definition">. */

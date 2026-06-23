@@ -14,7 +14,7 @@ mathjax-support = false
 git-repository-url = "https://github.com/gme-muriuki/inside-rustc-book"
 edit-url-template = "https://github.com/gme-muriuki/inside-rustc-book/edit/main/{path}"
 additional-css = ["./mdbook-admonish.css", "./diagrams.css", "./theme/pagetoc.css", "./theme/pagetoc-tweaks.css", "./theme/quiz-tweaks.css", "./theme/highlight-tweaks.css", "./theme/reader-enhancements.css"]
-additional-js = ["./theme/pagetoc.js", "./theme/glossary-tooltip.js", "./theme/diagram-zoom.js", "./theme/reading-time.js", "./theme/quiz-progress.js"]
+additional-js = ["./theme/pagetoc.js", "./theme/glossary-tooltip.js", "./theme/diagram-zoom.js", "./theme/reading-time.js", "./theme/quiz-progress.js", "./theme/sidebar-progress.js", "./theme/rustc-citations.js"]
 
 [output.html.fold]
 enable = true
