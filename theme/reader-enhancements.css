@@ -50,16 +50,45 @@
     border-radius: 3px;
 }
 
-/* Subtle dotted underline on glossary links so readers know they are
-   hoverable. Uses border so it pairs with mdBook's default link color
-   without overriding it. */
-a[href*="glossary.html#"]:not(:hover) {
-    text-decoration: none;
+/* ============================================================ */
+/* Universal in-content link styling                            */
+/* ============================================================ */
+/* Dotted border-bottom at rest, solid on hover, for every link */
+/* inside chapter content. mdBook's default text-decoration:    */
+/* underline (which only appears on hover) is overridden to none */
+/* so identifiers with underscores (e.g. Foo::bar_baz) never     */
+/* show a competing second line below the dotted one.            */
+/* The .header exclusion keeps heading anchor links (the         */
+/* clickable chapter/section headings) un-decorated.             */
+
+.content a:hover {
+    text-decoration: none !important;
+}
+
+/* Plain-text links: dotted border at rest, solid on hover. */
+.content a:not(.header):not(:has(code)) {
     border-bottom: 1px dotted currentColor;
 }
+.content a:not(.header):not(:has(code)):hover {
+    border-bottom-style: solid;
+}
+
+/* Code-wrapped links: dotted underline at all times, positioned with
+   text-underline-offset so it sits in a clean gap below the code box.
+   Color inherits currentColor so it reads at the same visibility as
+   the plain-text glossary dotted underline. */
+.content a:not(.header):has(code) {
+    text-decoration: underline dotted !important;
+    text-decoration-thickness: 1px;
+    text-decoration-color: currentColor !important;
+    text-underline-offset: 0.35em;
+}
+
+/* Glossary cross-links: subtle hover background on top of the
+   universal dotted-to-solid border. */
 a[href*="glossary.html#"]:hover {
-    text-decoration: none;
-    border-bottom: 1px solid currentColor;
+    background: var(--quote-bg, rgba(127, 127, 127, 0.12));
+    border-radius: 2px;
 }
 
 /* ============================================================ */
@@ -195,17 +224,21 @@ figure.diagram-zoomable:hover {
 /* rustc-citation GitHub links                                  */
 /* ============================================================ */
 
-a.rustc-citation-link {
-    text-decoration: none;
-    border-bottom: 1px dotted currentColor;
-}
+/* Citation links: subtle hover background on top of the universal
+   dotted-to-solid border. The dotted underline + text-decoration:none
+   come from the universal `.content a` block above. */
 a.rustc-citation-link:hover {
-    border-bottom-style: solid;
     background: var(--quote-bg, rgba(127, 127, 127, 0.08));
     border-radius: 2px;
 }
 a.rustc-citation-link code {
     color: inherit;
+}
+
+/* Footnote refs also use a custom hover style; same fix preemptively so
+   the browser underline does not double up on the background highlight. */
+sup.footnote-reference a:hover {
+    text-decoration: none;
 }
 
 /* ============================================================ */
