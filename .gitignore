@@ -34,3 +34,10 @@ __pycache__/
 # Rust (in case anyone runs cargo here)
 target/
 Cargo.lock
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
